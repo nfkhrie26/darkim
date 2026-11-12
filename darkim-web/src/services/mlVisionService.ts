@@ -1,9 +1,11 @@
 export interface MlBarcodeResult {
   success: boolean;
   barcode?: string;
+  format?: string;
   confidence?: number;
   stage?: string;
   time_ms?: number;
+  bbox?: number[];
   message?: string;
 }
 
@@ -19,31 +21,44 @@ export class MlVisionService {
       const blob = new Blob([new Uint8Array(imageBuffer)], { type: 'image/jpeg' });
       formData.append('file', blob, filename);
 
-      const res = await fetch(`${this.ML_URL}/api/v1/extract-barcode`, {
+      const endpoint = `${this.ML_URL}/api/v1/extract-barcode`;
+      console.log(`[MlVisionService] Mengirim gambar (${imageBuffer.length} bytes) ke FastAPI: ${endpoint}`);
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         body: formData,
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(30000), // 30 detik untuk cold start / EasyOCR multi-pass
       });
 
       if (res.ok) {
         const data = await res.json();
+        console.log('[MlVisionService] Respons FastAPI:', data);
+
         return {
           success: Boolean(data.success && data.barcode),
-          barcode: data.barcode,
-          confidence: data.confidence,
-          stage: data.stage,
-          time_ms: data.time_ms,
+          barcode: data.barcode || undefined,
+          format: data.format || undefined,
+          confidence: typeof data.confidence_score === 'number' ? data.confidence_score : data.confidence,
+          stage: data.method_used || data.stage || 'Unknown Method',
+          time_ms: typeof data.processing_time_ms === 'number' ? data.processing_time_ms : data.time_ms,
+          bbox: Array.isArray(data.bbox) ? data.bbox : undefined,
           message: data.message,
         };
+      } else {
+        const errorText = await res.text().catch(() => '');
+        console.warn(`[MlVisionService] FastAPI error HTTP ${res.status}:`, errorText);
       }
     } catch (err: any) {
-      console.warn('[MlVisionService] FastAPI engine call failed or timed out:', err?.message || err);
+      if (err.name === 'TimeoutError') {
+        console.warn('[MlVisionService] FastAPI request timed out (30s).');
+      } else {
+        console.warn('[MlVisionService] Tidak dapat terhubung ke FastAPI engine:', err?.message || err);
+      }
     }
 
-    // Graceful fallback for demo or when ML engine is starting
     return {
       success: false,
-      message: 'Barcode tidak terdeteksi oleh ML Engine. Pastikan barcode terlihat jelas dan fokus.',
+      message: 'Barcode tidak terdeteksi oleh ML Engine. Pastikan barcode terlihat jelas, tegak, dan fokus.',
     };
   }
 }

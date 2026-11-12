@@ -16,6 +16,13 @@ export default function HomeScannerPage() {
   const [evaluation, setEvaluation] = useState<NutritionEvaluation | null>(null);
   const [tableMode, setTableMode] = useState<'status' | 'nutrition'>('status');
 
+  // History backup for "Restore Previous"
+  const [previousProduct, setPreviousProduct] = useState<ProductModel | null>(null);
+  const [previousEvaluation, setPreviousEvaluation] = useState<NutritionEvaluation | null>(null);
+
+  // Scan error state
+  const [scanError, setScanError] = useState<string | null>(null);
+
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
 
@@ -29,6 +36,24 @@ export default function HomeScannerPage() {
     setTimeout(() => {
       setToastMessage(null);
     }, 3500);
+  };
+
+  // Reset scanner to empty state
+  const handleResetScan = () => {
+    setScanError(null);
+    setProduct(null);
+    setEvaluation(null);
+    showToast('Tampilan berhasil direset.');
+  };
+
+  // Restore previous product information
+  const handleRestorePrevious = () => {
+    if (previousProduct && previousEvaluation) {
+      setProduct(previousProduct);
+      setEvaluation(previousEvaluation);
+      setScanError(null);
+      showToast(`Mengembalikan informasi produk: ${previousProduct.name}`);
+    }
   };
 
   // Re-evaluate when profile changes
@@ -54,31 +79,22 @@ export default function HomeScannerPage() {
     }
   };
 
-  // Initial load: Fetch default sample product
+  // Initial load: Biarkan kosong menunggu pemindaian pertama dari kamera / foto pengguna
   useEffect(() => {
-    const fetchInitial = async () => {
-      try {
-        const res = await fetch('/api/scan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ barcode: '8991234567890', profile: selectedProfile }),
-        });
-        const data: ScanApiResponse = await res.json();
-        if (data.success && data.product && data.evaluation) {
-          setProduct(data.product);
-          setEvaluation(data.evaluation);
-        }
-      } catch (err) {
-        console.warn('Initial product load warning:', err);
-      }
-    };
-    fetchInitial();
+    // Tidak lagi me-load dummy produk otomatis agar tidak membingungkan pengguna
   }, []);
 
   // Handle image upload or camera capture
   const handleScanImage = async (file: File) => {
+    // Backup current data before starting new scan
+    if (product && evaluation) {
+      setPreviousProduct(product);
+      setPreviousEvaluation(evaluation);
+    }
+
+    setScanError(null);
     setIsScanning(true);
-    showToast('Memindai barcode kemasan...');
+    showToast('Mengirim gambar ke AI Vision Engine...');
 
     try {
       const formData = new FormData();
@@ -95,17 +111,24 @@ export default function HomeScannerPage() {
       if (data.success && data.product && data.evaluation) {
         setProduct(data.product);
         setEvaluation(data.evaluation);
-        showToast(`Produk terdeteksi: ${data.product.name}`);
+        setScanError(null);
+        const timing = data.time_ms ? ` (${data.time_ms} ms)` : '';
+        showToast(`Produk terdeteksi: ${data.product.name}${timing}`);
       } else if (data.notFound && data.barcode) {
         setFallbackBarcode(data.barcode);
-        showToast('Produk belum terdaftar di database.');
+        const timing = data.time_ms ? ` (${data.time_ms} ms)` : '';
+        showToast(`Barcode ${data.barcode} terdeteksi${timing}, tetapi belum terdaftar di database.`);
         // Prompt user to contribute or report
         setContributeModalOpen(true);
       } else {
-        showToast(data.message || 'Barcode tidak terdeteksi. Silakan coba lagi.');
+        const errorMsg = data.message || 'Gagal mendeteksi barcode kemasan. Pastikan barcode terlihat jelas, tegak, dan fokus.';
+        setScanError(errorMsg);
+        showToast(errorMsg);
       }
     } catch {
-      showToast('Gagal memproses pemindaian gambar.');
+      const errorMsg = 'Gagal memproses pemindaian gambar. Pastikan server AI aktif.';
+      setScanError(errorMsg);
+      showToast(errorMsg);
     } finally {
       setIsScanning(false);
     }
@@ -184,6 +207,11 @@ export default function HomeScannerPage() {
           onSelectProfile={handleSelectProfile}
           tableMode={tableMode}
           onToggleTableMode={handleToggleTableMode}
+          isScanning={isScanning}
+          scanError={scanError}
+          hasPreviousData={Boolean(previousProduct && previousEvaluation)}
+          onReset={handleResetScan}
+          onRestorePrevious={handleRestorePrevious}
         />
       </main>
 

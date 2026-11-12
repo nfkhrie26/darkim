@@ -42,6 +42,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    let mlStage: string | undefined;
+    let mlTimeMs: number | undefined;
+
     // 1. If no direct barcode provided but image exists, send to ML Engine
     if (!barcode && fileBuffer) {
       const mlResult = await MlVisionService.extractBarcode(fileBuffer, fileName);
@@ -52,6 +55,8 @@ export async function POST(req: NextRequest) {
         }, { status: 422 });
       }
       barcode = mlResult.barcode;
+      mlStage = mlResult.stage;
+      mlTimeMs = mlResult.time_ms;
     }
 
     if (!barcode) {
@@ -79,6 +84,8 @@ export async function POST(req: NextRequest) {
         success: false,
         notFound: true,
         barcode,
+        stage: mlStage,
+        time_ms: mlTimeMs,
         message: 'Produk tidak ditemukan pada database lokal maupun OpenFoodFacts.',
       }, { status: 404 });
     }
@@ -91,6 +98,8 @@ export async function POST(req: NextRequest) {
       barcode,
       product,
       evaluation,
+      stage: mlStage,
+      time_ms: mlTimeMs,
     });
   } catch (err: any) {
     console.error('API /api/scan error:', err);
