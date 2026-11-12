@@ -1,0 +1,68 @@
+// Prisma schema for DARKIM Monorepo
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TicketStatus {
+  PENDING
+  RESOLVED
+  REJECTED
+}
+
+model Product {
+  id             String   @id @default(uuid())
+  barcode        String   @unique
+  name           String
+  brand          String   @default("Tanpa Brand")
+  category       String   @default("Makanan & Minuman")
+  energy         Float?   // kkal
+  carbohydrates  Float?   // gram
+  sugars         Float?   // gram
+  fiber          Float?   // gram
+  proteins       Float?   // gram
+  fat            Float?   // gram
+  saturatedFat   Float?   // gram
+  sodium         Float?   // mg
+  salt           Float?   // gram
+  cholesterol    Float?   // mg
+  calcium        Float?   // mg
+  image          String?
+  rawData        Json?    // raw OpenFoodFacts payload
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([barcode])
+  @@index([name])
+}
+
+model ProductTicket {
+  id               String       @id @default(uuid())
+  barcode          String
+  description      String?
+  frontPhoto       String?      // public path /uploads/tickets/...
+  nutritionPhoto   String?      // public path /uploads/tickets/...
+  status           TicketStatus @default(PENDING)
+  resolutionMethod String?      // 'OFF_FUZZY' | 'MANUAL'
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([barcode])
+  @@index([status])
+}
+
+model Admin {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+}
+
