@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from extractor import extract_barcode_from_bytes
 
@@ -17,18 +17,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+async def root():
+    return {
+        "status": "online",
+        "message": "DARKIM ML API aktif. Buka /docs untuk menguji endpoint.",
+    }
+
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "service": "DARKIM ML Barcode Extractor"}
 
 @app.post("/api/v1/extract-barcode")
-def extract_barcode_endpoint(file: UploadFile = File(...)):
+async def extract_barcode_endpoint(
+    file: UploadFile = File(...),
+    mode: str = Form("deep"),  # "fast" untuk auto-scan kamera tiap 1 detik, "deep" untuk upload foto / jepret manual
+):
     if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File yang diunggah harus berupa gambar (.jpg, .png, .webp).")
+        raise HTTPException(
+            status_code=400,
+            detail="File yang diunggah harus berupa gambar (.jpg, .jpeg, .png, .webp).",
+        )
 
-    image_bytes = file.file.read()
+    image_bytes = await file.read()
     if len(image_bytes) == 0:
         raise HTTPException(status_code=400, detail="File gambar kosong.")
 
-    result = extract_barcode_from_bytes(image_bytes)
+    is_fast_mode = mode.strip().lower() == "fast"
+    result = extract_barcode_from_bytes(image_bytes, fast_mode=is_fast_mode)
     return result

@@ -76,12 +76,14 @@ def get_named_image_variations(img_bgr: np.ndarray) -> List[Tuple[str, np.ndarra
         ("AdaptiveThreshold", thresh),
     ]
 
-def localize_barcode_candidates_cv(img_bgr: np.ndarray) -> List[Tuple[int, int, int, int]]:
+def localize_barcode_candidates_cv(img_bgr: np.ndarray, fast_mode: bool = False) -> List[Tuple[int, int, int, int]]:
     H, W = img_bgr.shape[:2]
     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
     gradX = cv2.Sobel(gray, ddepth=cv2.CV_32F, dx=1, dy=0, ksize=-1)
     gradY = cv2.Sobel(gray, ddepth=cv2.CV_32F, dx=0, dy=1, ksize=-1)
     boxes = []
+    max_contours = 1 if fast_mode else 3
+
     for diff, ksize in [(cv2.subtract(gradX, gradY), (21, 7)), (cv2.subtract(gradY, gradX), (7, 21))]:
         grad = cv2.convertScaleAbs(diff)
         blurred = cv2.blur(grad, (5, 5))
@@ -91,14 +93,16 @@ def localize_barcode_candidates_cv(img_bgr: np.ndarray) -> List[Tuple[int, int, 
         closed = cv2.erode(closed, None, iterations=2)
         closed = cv2.dilate(closed, None, iterations=3)
         cnts, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:3]
+        cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:max_contours]
         for c in cnts:
             x, y, w, h = cv2.boundingRect(c)
             if w > 25 and h > 25 and (w * h) > 0.005 * (W * H):
                 boxes.append((x, y, x + w, y + h))
-    boxes.append((int(W * 0.45), int(H * 0.50), W, H))
-    boxes.append((0, int(H * 0.25), int(W * 0.60), H))
-    boxes.append((0, int(H * 0.50), W, H))
+
+    if not fast_mode:
+        boxes.append((int(W * 0.45), int(H * 0.50), W, H))
+        boxes.append((0, int(H * 0.25), int(W * 0.60), H))
+        boxes.append((0, int(H * 0.50), W, H))
     return boxes
 
 def progressive_upscale(crop_img: np.ndarray, iter_level: int = 1) -> np.ndarray:
@@ -113,6 +117,15 @@ def progressive_upscale(crop_img: np.ndarray, iter_level: int = 1) -> np.ndarray
     if scale > 1.0:
         return cv2.resize(crop_img, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
     return crop_img
+
+def rotate_image_by_angle(img_in: np.ndarray, angle: int) -> np.ndarray:
+    if angle == 90:
+        return cv2.rotate(img_in, cv2.ROTATE_90_CLOCKWISE)
+    elif angle == 270:
+        return cv2.rotate(img_in, cv2.ROTATE_90_COUNTERCLOCKWISE)
+    elif angle == 180:
+        return cv2.rotate(img_in, cv2.ROTATE_180)
+    return img_in
 
 def decode_bars_multi_engine(img_input: np.ndarray) -> Optional[Tuple[str, str]]:
     try:
@@ -161,14 +174,7 @@ def extract_ean13_from_ocr_tokens(ocr_result) -> Optional[Tuple[str, str]]:
 def strict_ocr_barcode_progressive(img_crop: np.ndarray, iter_level: int = 1) -> Optional[Tuple[str, str]]:
     upscaled = progressive_upscale(img_crop, iter_level)
     for angle in [0, 90, 270, 180]:
-        if angle == 90:
-            rot = cv2.rotate(upscaled, cv2.ROTATE_90_CLOCKWISE)
-        elif angle == 270:
-            rot = cv2.rotate(upscaled, cv2.ROTATE_90_COUNTERCLOCKWISE)
-        elif angle == 180:
-            rot = cv2.rotate(upscaled, cv2.ROTATE_180)
-        else:
-            rot = upscaled
+        rot = rotate_image_by_angle(upscaled, angle)
         gray = cv2.cvtColor(rot, cv2.COLOR_BGR2GRAY) if len(rot.shape) == 3 else rot
         clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8)).apply(gray)
         for ocr_in in [rot, clahe]:
@@ -181,7 +187,7 @@ def strict_ocr_barcode_progressive(img_crop: np.ndarray, iter_level: int = 1) ->
 # =====================================================================
 # 3. FUNGSI UTAMA EKSTRAKSI DARI BYTES GAMBAR
 # =====================================================================
-def extract_barcode_from_bytes(image_bytes: bytes) -> Dict[str, Any]:
+def extract_barcode_from_bytes(image_bytes: bytes, fast_mode: bool = False) -> Dict[str, Any]:
     t0 = time.time()
     nparr = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -205,27 +211,21 @@ def extract_barcode_from_bytes(image_bytes: bytes) -> Dict[str, Any]:
             x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
             candidate_boxes.append(("YOLOv8n Crop", [x1, y1, x2, y2]))
 
-    for (mx1, my1, mx2, my2) in localize_barcode_candidates_cv(img):
+    for (mx1, my1, mx2, my2) in localize_barcode_candidates_cv(img, fast_mode=fast_mode):
         candidate_boxes.append(("Morfologi Sobel 2-Arah", [mx1, my1, mx2, my2]))
     candidate_boxes.append(("Full Image Scan", [0, 0, W, H]))
 
+    # TAHAP A1: Uji 4 Filter Bersih (Original, Grayscale, CLAHE, Sharpened) di 4 Sudut Rotasi
     for stage_label, (x1, y1, x2, y2) in candidate_boxes:
         pad = 20 if stage_label != "Full Image Scan" else 0
         crop = img[max(0, y1 - pad) : min(H, y2 + pad), max(0, x1 - pad) : min(W, x2 + pad)]
         if crop.size == 0:
             continue
         crop_up = progressive_upscale(crop, iter_level=1)
-        for angle in [0, 90, 270, 180]:
-            if angle == 90:
-                crop_rot = cv2.rotate(crop_up, cv2.ROTATE_90_CLOCKWISE)
-            elif angle == 270:
-                crop_rot = cv2.rotate(crop_up, cv2.ROTATE_90_COUNTERCLOCKWISE)
-            elif angle == 180:
-                crop_rot = cv2.rotate(crop_up, cv2.ROTATE_180)
-            else:
-                crop_rot = crop_up
 
-            for filt_name, var_img in get_named_image_variations(crop_rot):
+        for angle in [0, 90, 270, 180]:
+            crop_rot = rotate_image_by_angle(crop_up, angle)
+            for filt_name, var_img in get_named_image_variations(crop_rot)[:4]:
                 decoded = decode_bars_multi_engine(var_img)
                 if decoded:
                     code, fmt = decoded
@@ -234,11 +234,42 @@ def extract_barcode_from_bytes(image_bytes: bytes) -> Dict[str, Any]:
                         "barcode": code,
                         "format": fmt,
                         "method_used": f"{stage_label} + Rotasi {angle}° + {filt_name} + pyzbar",
-                        "confidence_score": 99.8 if filt_name != "AdaptiveThreshold" else 99.1,
+                        "confidence_score": 99.8,
                         "bbox": [x1, y1, x2, y2] if stage_label != "Full Image Scan" else [],
                         "processing_time_ms": round((time.time() - t0) * 1000, 1),
                     }
 
+        # TAHAP A2: Uji filter ke-5 (AdaptiveThreshold) jika 4 filter bersih belum berhasil
+        if not fast_mode:
+            for angle in [0, 90, 270, 180]:
+                crop_rot = rotate_image_by_angle(crop_up, angle)
+                filt_name, var_img = get_named_image_variations(crop_rot)[4]
+                decoded = decode_bars_multi_engine(var_img)
+                if decoded:
+                    code, fmt = decoded
+                    return {
+                        "success": True,
+                        "barcode": code,
+                        "format": fmt,
+                        "method_used": f"{stage_label} + Rotasi {angle}° + {filt_name} + pyzbar",
+                        "confidence_score": 99.1,
+                        "bbox": [x1, y1, x2, y2] if stage_label != "Full Image Scan" else [],
+                        "processing_time_ms": round((time.time() - t0) * 1000, 1),
+                    }
+
+    # Jika mode="fast" (streaming kamera otomatis), hentikan di sini agar respons instan (<100 ms)
+    if fast_mode:
+        return {
+            "success": False,
+            "barcode": None,
+            "format": None,
+            "method_used": "Fast Stream (Belum Terdeteksi)",
+            "confidence_score": 0.0,
+            "bbox": candidate_boxes[0][1] if candidate_boxes and candidate_boxes[0][0] == "YOLOv8n Crop" else [],
+            "processing_time_ms": round((time.time() - t0) * 1000, 1),
+        }
+
+    # TAHAP B: Mode "deep" (Unggah Foto / Jepret Detail) -> EasyOCR + Progressive Zoom + GS1 Checksum
     for iter_lvl in [1, 2, 3]:
         for stage_label, (x1, y1, x2, y2) in candidate_boxes:
             if stage_label == "Full Image Scan" and iter_lvl > 1:
