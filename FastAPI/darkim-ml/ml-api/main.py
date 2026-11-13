@@ -8,10 +8,9 @@ app = FastAPI(
     version="5.0.0",
 )
 
-# Izinkan akses dari server Next.js di dalam monorepo
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -19,10 +18,7 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {
-        "status": "online",
-        "message": "DARKIM ML API aktif. Buka /docs untuk menguji endpoint.",
-    }
+    return {"status": "online", "message": "DARKIM ML API aktif. Buka /docs untuk menguji endpoint."}
 
 @app.get("/health")
 async def health_check():
@@ -31,18 +27,11 @@ async def health_check():
 @app.post("/api/v1/extract-barcode")
 async def extract_barcode_endpoint(
     file: UploadFile = File(...),
-    mode: str = Form("deep"),  # "fast" untuk auto-scan kamera tiap 1 detik, "deep" untuk upload foto / jepret manual
+    mode: str = Form("deep"),  # "fast" untuk auto-scan kamera realtime, "deep" untuk upload/jepret manual
 ):
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(
-            status_code=400,
-            detail="File yang diunggah harus berupa gambar (.jpg, .jpeg, .png, .webp).",
-        )
-
     image_bytes = await file.read()
-    if len(image_bytes) == 0:
+    if not image_bytes:
         raise HTTPException(status_code=400, detail="File gambar kosong.")
 
     is_fast_mode = mode.strip().lower() == "fast"
-    result = extract_barcode_from_bytes(image_bytes, fast_mode=is_fast_mode)
-    return result
+    return extract_barcode_from_bytes(image_bytes, fast_mode=is_fast_mode)
