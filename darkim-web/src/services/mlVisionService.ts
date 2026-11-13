@@ -10,29 +10,36 @@ export interface MlBarcodeResult {
 }
 
 export class MlVisionService {
-  private static ML_URL = process.env.ML_ENGINE_URL || 'http://127.0.0.1:8000';
+  private static ML_URL = process.env.ML_ENGINE_URL || 'http://127.0.0.1:8001';
 
   /**
    * Send image buffer to Python FastAPI /api/v1/extract-barcode
+   * @param imageBuffer Raw image buffer
+   * @param filename Filename identifier
+   * @param mode 'fast' untuk auto-scan realtime kamera, 'deep' untuk upload foto manual / OCR
    */
-  static async extractBarcode(imageBuffer: Buffer, filename = 'scan.jpg'): Promise<MlBarcodeResult> {
+  static async extractBarcode(
+    imageBuffer: Buffer,
+    filename = 'scan.jpg',
+    mode: 'fast' | 'deep' = 'deep'
+  ): Promise<MlBarcodeResult> {
     try {
       const formData = new FormData();
       const blob = new Blob([new Uint8Array(imageBuffer)], { type: 'image/jpeg' });
       formData.append('file', blob, filename);
+      formData.append('mode', mode);
 
       const endpoint = `${this.ML_URL}/api/v1/extract-barcode`;
-      console.log(`[MlVisionService] Mengirim gambar (${imageBuffer.length} bytes) ke FastAPI: ${endpoint}`);
+      const timeoutMs = mode === 'fast' ? 7000 : 30000;
 
       const res = await fetch(endpoint, {
         method: 'POST',
         body: formData,
-        signal: AbortSignal.timeout(30000), // 30 detik untuk cold start / EasyOCR multi-pass
+        signal: AbortSignal.timeout(timeoutMs),
       });
 
       if (res.ok) {
         const data = await res.json();
-        console.log('[MlVisionService] Respons FastAPI:', data);
 
         return {
           success: Boolean(data.success && data.barcode),
@@ -50,7 +57,7 @@ export class MlVisionService {
       }
     } catch (err: any) {
       if (err.name === 'TimeoutError') {
-        console.warn('[MlVisionService] FastAPI request timed out (30s).');
+        console.warn(`[MlVisionService] FastAPI request timed out (${mode} mode).`);
       } else {
         console.warn('[MlVisionService] Tidak dapat terhubung ke FastAPI engine:', err?.message || err);
       }
@@ -62,4 +69,3 @@ export class MlVisionService {
     };
   }
 }
-

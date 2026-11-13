@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import Toast from '@/components/Toast';
@@ -79,13 +79,30 @@ export default function HomeScannerPage() {
     }
   };
 
-  // Initial load: Biarkan kosong menunggu pemindaian pertama dari kamera / foto pengguna
-  useEffect(() => {
-    // Tidak lagi me-load dummy produk otomatis agar tidak membingungkan pengguna
-  }, []);
+  // Real-time Continuous Auto-Scan Success handler
+  const handleAutoScanSuccess = (data: ScanApiResponse) => {
+    if (data.product && data.evaluation) {
+      if (product && evaluation && product.barcode !== data.product.barcode) {
+        setPreviousProduct(product);
+        setPreviousEvaluation(evaluation);
+      }
+      setProduct(data.product);
+      setEvaluation(data.evaluation);
+      setScanError(null);
+      const timing = data.time_ms ? ` (${data.time_ms} ms)` : '';
+      showToast(`Produk terdeteksi: ${data.product.name}${timing}`);
+    }
+  };
 
-  // Handle image upload or camera capture
-  const handleScanImage = async (file: File) => {
+  // Real-time Barcode Not Found handler
+  const handleBarcodeNotFound = (scannedBarcode: string) => {
+    setFallbackBarcode(scannedBarcode);
+    showToast(`Barcode ${scannedBarcode} terdeteksi, tetapi belum terdaftar di database.`);
+    setContributeModalOpen(true);
+  };
+
+  // Handle manual image upload or deep OCR scan
+  const handleScanImage = async (file: File, mode: 'fast' | 'deep' = 'deep') => {
     // Backup current data before starting new scan
     if (product && evaluation) {
       setPreviousProduct(product);
@@ -94,12 +111,13 @@ export default function HomeScannerPage() {
 
     setScanError(null);
     setIsScanning(true);
-    showToast('Mengirim gambar ke AI Vision Engine...');
+    showToast(mode === 'deep' ? 'Memproses Deep Scan (AI Vision + Multi-Pass OCR)...' : 'Mengirim gambar ke AI Vision Engine...');
 
     try {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('profile', selectedProfile);
+      formData.append('mode', mode);
 
       const res = await fetch('/api/scan', {
         method: 'POST',
@@ -118,7 +136,6 @@ export default function HomeScannerPage() {
         setFallbackBarcode(data.barcode);
         const timing = data.time_ms ? ` (${data.time_ms} ms)` : '';
         showToast(`Barcode ${data.barcode} terdeteksi${timing}, tetapi belum terdaftar di database.`);
-        // Prompt user to contribute or report
         setContributeModalOpen(true);
       } else {
         const errorMsg = data.message || 'Gagal mendeteksi barcode kemasan. Pastikan barcode terlihat jelas, tegak, dan fokus.';
@@ -146,7 +163,7 @@ export default function HomeScannerPage() {
 
   const handleTriggerScanMock = async () => {
     setIsScanning(true);
-    showToast('Memindai barcode...');
+    showToast('Memindai barcode simulasi...');
 
     // Pick next barcode
     const currentIdx = mockBarcodes.findIndex((b) => b === product?.barcode);
@@ -183,20 +200,23 @@ export default function HomeScannerPage() {
       {/* Top Header & Branding */}
       <Header />
 
-      {/* Main Content Area (1:1 Parity with Blade Layout) */}
+      {/* Main Content Area */}
       <main className="w-full max-w-7xl mx-auto flex-1 flex flex-col lg:flex-row gap-5 lg:gap-6 items-start">
         {/* Left Vertical Floating Sidebar */}
         <Sidebar onToggleTableMode={handleToggleTableMode} onShowToast={showToast} />
 
-        {/* Center Column: Barcode Scanner Viewfinder */}
+        {/* Center Column: Realtime Auto Barcode Scanner Viewfinder */}
         <CameraScanner
           onScanImage={handleScanImage}
+          onScanSuccess={handleAutoScanSuccess}
+          onBarcodeNotFound={handleBarcodeNotFound}
           onTriggerScanMock={handleTriggerScanMock}
           onOpenReport={() => {
             setFallbackBarcode(product?.barcode || '');
             setReportModalOpen(true);
           }}
           isScanning={isScanning}
+          selectedProfile={selectedProfile}
         />
 
         {/* Right Column: Product Details & Nutritional Value Analysis */}
@@ -234,4 +254,3 @@ export default function HomeScannerPage() {
     </div>
   );
 }
-

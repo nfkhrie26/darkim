@@ -11,6 +11,7 @@ export async function POST(req: NextRequest) {
     let profile: HealthProfile = 'diabetes';
     let fileBuffer: Buffer | null = null;
     let fileName = 'scan.jpg';
+    let scanMode: 'fast' | 'deep' = 'deep';
 
     const contentType = req.headers.get('content-type') || '';
 
@@ -19,12 +20,16 @@ export async function POST(req: NextRequest) {
       const file = formData.get('file') as File | null;
       const explicitBarcode = formData.get('barcode') as string | null;
       const explicitProfile = formData.get('profile') as HealthProfile | null;
+      const explicitMode = formData.get('mode') as string | null;
 
       if (explicitProfile && (explicitProfile === 'hipertensi' || explicitProfile === 'diabetes')) {
         profile = explicitProfile;
       }
       if (explicitBarcode) {
         barcode = explicitBarcode.trim();
+      }
+      if (explicitMode === 'fast' || explicitMode === 'deep') {
+        scanMode = explicitMode;
       }
 
       if (file && file.size > 0) {
@@ -40,6 +45,9 @@ export async function POST(req: NextRequest) {
       if (body.barcode) {
         barcode = String(body.barcode).trim();
       }
+      if (body.mode === 'fast' || body.mode === 'deep') {
+        scanMode = body.mode;
+      }
     }
 
     let mlStage: string | undefined;
@@ -47,12 +55,13 @@ export async function POST(req: NextRequest) {
 
     // 1. If no direct barcode provided but image exists, send to ML Engine
     if (!barcode && fileBuffer) {
-      const mlResult = await MlVisionService.extractBarcode(fileBuffer, fileName);
+      const mlResult = await MlVisionService.extractBarcode(fileBuffer, fileName, scanMode);
       if (!mlResult.success || !mlResult.barcode) {
         return NextResponse.json({
           success: false,
+          detected: false,
           message: mlResult.message || 'Gagal mendeteksi barcode dari gambar. Pastikan barcode terlihat jelas dan fokus.',
-        }, { status: 422 });
+        }, { status: scanMode === 'fast' ? 200 : 422 });
       }
       barcode = mlResult.barcode;
       mlStage = mlResult.stage;
@@ -62,6 +71,7 @@ export async function POST(req: NextRequest) {
     if (!barcode) {
       return NextResponse.json({
         success: false,
+        detected: false,
         message: 'Barcode atau citra kemasan harus disertakan.',
       }, { status: 400 });
     }
@@ -82,6 +92,7 @@ export async function POST(req: NextRequest) {
     if (!product) {
       return NextResponse.json({
         success: false,
+        detected: true,
         notFound: true,
         barcode,
         stage: mlStage,
@@ -95,6 +106,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      detected: true,
       barcode,
       product,
       evaluation,
@@ -109,4 +121,3 @@ export async function POST(req: NextRequest) {
     }, { status: 500 });
   }
 }
-
