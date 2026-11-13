@@ -39,8 +39,14 @@ except Exception:
     OPENCV_BARCODE_DETECTOR = None
 
 # =====================================================================
-# 2. FUNGSI VALIDASI GS1 & PENGOLAHAN CITRA PRESISI + CEPAT
+# 2. FUNGSI VALIDASI GS1, PENJAGA FRAME KOSONG & PENGOLAHAN CITRA
 # =====================================================================
+def is_blank_or_low_variance(img_bgr: np.ndarray, min_std: float = 10.0) -> bool:
+    """Deteksi instan (<2 ms) jika kamera ditutup, gelap total, atau gambar polos."""
+    small = cv2.resize(img_bgr, (160, 160), interpolation=cv2.INTER_NEAREST)
+    gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
+    return float(np.std(gray)) < min_std
+
 def normalize_and_validate_gtin(code_str: str) -> Tuple[bool, str, str]:
     cleaned = "".join(ch for ch in str(code_str) if ch.isdigit())
     fmt = "EAN-13"
@@ -183,17 +189,23 @@ def extract_ean13_from_ocr_tokens(ocr_result) -> Optional[Tuple[str, str]]:
                             return norm_c, fmt
     return None
 
-def strict_ocr_barcode_progressive(img_crop: np.ndarray, iter_level: int = 1) -> Optional[Tuple[str, str]]:
+def strict_ocr_barcode_progressive(
+    img_crop: np.ndarray, iter_level: int = 1, deadline: Optional[float] = None
+) -> Optional[Tuple[str, str]]:
     upscaled = progressive_upscale(img_crop, iter_level)
     h, w = upscaled.shape[:2]
-    angles_order = get_smart_angles(w, h)
+    angles_order = get_smart_angles(w, h)[:2]  # Uji 2 orientasi utama agar OCR tidak boros waktu
 
     for angle in angles_order:
+        if deadline and time.perf_counter() > deadline:
+            return None
         rot = rotate_image_by_angle(upscaled, angle)
         gray = cv2.cvtColor(rot, cv2.COLOR_BGR2GRAY) if len(rot.shape) == 3 else rot
         clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8)).apply(gray)
 
         for ocr_in in (rot, clahe):
+            if deadline and time.perf_counter() > deadline:
+                return None
             ocr_texts = OCR_READER.readtext(ocr_in, detail=1, allowlist="0123456789")
             found = extract_ean13_from_ocr_tokens(ocr_texts)
             if found:
@@ -204,7 +216,10 @@ def strict_ocr_barcode_progressive(img_crop: np.ndarray, iter_level: int = 1) ->
 # 3. FUNGSI UTAMA EKSTRAKSI DARI BYTES GAMBAR (SUPPORT FAST & DEEP MODE)
 # =====================================================================
 def extract_barcode_from_bytes(image_bytes: bytes, fast_mode: bool = False) -> Dict[str, Any]:
-    t0 = time.time()
+    t0 = time.perf_counter()
+    # Batas waktu ketat: 1.2 detik untuk fast_mode, 4.5 detik untuk deep_mode
+    deadline = t0 + (1.2 if fast_mode else 4.5)
+
     nparr = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
@@ -217,6 +232,18 @@ def extract_barcode_from_bytes(image_bytes: bytes, fast_mode: bool = False) -> D
             "confidence_score": 0.0,
             "bbox": [],
             "processing_time_ms": 0.0,
+        }
+
+    # PENGAMAN 1: Tolak instan jika kamera ditutup / gelap / gambar polos (< 2 ms)
+    if is_blank_or_low_variance(img):
+        return {
+            "success": False,
+            "barcode": None,
+            "format": None,
+            "method_used": "Frame Kosong / Kamera Tertutup",
+            "confidence_score": 0.0,
+            "bbox": [],
+            "processing_time_ms": round((time.perf_counter() - t0) * 1000, 1),
         }
 
     H, W = img.shape[:2]
@@ -235,13 +262,19 @@ def extract_barcode_from_bytes(image_bytes: bytes, fast_mode: bool = False) -> D
     for _, lbl, box in yolo_candidates[:2]:
         candidate_boxes.append((lbl, box))
 
-    for (mx1, my1, mx2, my2) in localize_barcode_candidates_cv(img, fast_mode=fast_mode):
-        candidate_boxes.append(("Morfologi Sobel 2-Arah", [mx1, my1, mx2, my2]))
+    # Short-circuit Sobel pada fast_mode jika YOLO sudah sangat yakin (conf >= 0.55)
+    has_strong_yolo = bool(yolo_candidates and yolo_candidates[0][0] >= 0.55)
+    if not (fast_mode and has_strong_yolo) and time.perf_counter() < deadline:
+        for (mx1, my1, mx2, my2) in localize_barcode_candidates_cv(img, fast_mode=fast_mode):
+            candidate_boxes.append(("Morfologi Sobel 2-Arah", [mx1, my1, mx2, my2]))
 
     candidate_boxes.append(("Full Image Scan", [0, 0, W, H]))
 
     # 2. TAHAP A: Dekode Garis 1D (pyzbar + OpenCV + Smart Angles + Lazy Filters)
     for stage_label, (x1, y1, x2, y2) in candidate_boxes:
+        if time.perf_counter() > deadline:
+            break
+
         pad = 30 if stage_label != "Full Image Scan" else 0
         crop = img[max(0, y1 - pad) : min(H, y2 + pad), max(0, x1 - pad) : min(W, x2 + pad)]
         if crop.size == 0:
@@ -259,8 +292,12 @@ def extract_barcode_from_bytes(image_bytes: bytes, fast_mode: bool = False) -> D
             angles_order = angles_order[:2]
 
         for angle in angles_order:
+            if time.perf_counter() > deadline:
+                break
             crop_rot = rotate_image_by_angle(crop_up, angle)
             for filt_name, var_img in iter_image_variations(crop_rot, include_thresh=False):
+                if time.perf_counter() > deadline:
+                    break
                 decoded = decode_bars_multi_engine(var_img)
                 if decoded:
                     code, fmt = decoded
@@ -271,11 +308,13 @@ def extract_barcode_from_bytes(image_bytes: bytes, fast_mode: bool = False) -> D
                         "method_used": f"{stage_label} + Rotasi {angle}° + {filt_name} + pyzbar",
                         "confidence_score": 99.8,
                         "bbox": [x1, y1, x2, y2] if stage_label != "Full Image Scan" else [],
-                        "processing_time_ms": round((time.time() - t0) * 1000, 1),
+                        "processing_time_ms": round((time.perf_counter() - t0) * 1000, 1),
                     }
 
-        if not fast_mode:
+        if not fast_mode and time.perf_counter() < deadline:
             for angle in angles_order:
+                if time.perf_counter() > deadline:
+                    break
                 crop_rot = rotate_image_by_angle(crop_up, angle)
                 gray = cv2.cvtColor(crop_rot, cv2.COLOR_BGR2GRAY)
                 clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8)).apply(gray)
@@ -293,7 +332,7 @@ def extract_barcode_from_bytes(image_bytes: bytes, fast_mode: bool = False) -> D
                         "method_used": f"{stage_label} + Rotasi {angle}° + AdaptiveThreshold + pyzbar",
                         "confidence_score": 99.1,
                         "bbox": [x1, y1, x2, y2] if stage_label != "Full Image Scan" else [],
-                        "processing_time_ms": round((time.time() - t0) * 1000, 1),
+                        "processing_time_ms": round((time.perf_counter() - t0) * 1000, 1),
                     }
 
     # Jika mode="fast" (auto-scan kamera realtime), langsung kembalikan hasil agar siap memproses frame berikutnya
@@ -305,21 +344,25 @@ def extract_barcode_from_bytes(image_bytes: bytes, fast_mode: bool = False) -> D
             "method_used": "Fast Stream (Belum Terdeteksi)",
             "confidence_score": 0.0,
             "bbox": candidate_boxes[0][1] if candidate_boxes and candidate_boxes[0][0] == "YOLOv8n Crop" else [],
-            "processing_time_ms": round((time.time() - t0) * 1000, 1),
+            "processing_time_ms": round((time.perf_counter() - t0) * 1000, 1),
         }
 
-    # 3. TAHAP B: Cadangan EasyOCR (Level 1 & 2 pada kandidat ROI terbaik untuk mode="deep")
-    ocr_candidates = [c for c in candidate_boxes if c[0] != "Full Image Scan"][:3]
+    # 3. TAHAP B: Cadangan EasyOCR dengan batas waktu (hanya untuk mode="deep")
+    ocr_candidates = [c for c in candidate_boxes if c[0] != "Full Image Scan"][:2]
     if not ocr_candidates:
         ocr_candidates = candidate_boxes[:1]
 
     for iter_lvl in (1, 2):
+        if time.perf_counter() > deadline:
+            break
         for stage_label, (x1, y1, x2, y2) in ocr_candidates:
+            if time.perf_counter() > deadline:
+                break
             pad = 30 if stage_label != "Full Image Scan" else 0
             crop = img[max(0, y1 - pad) : min(H, y2 + pad), max(0, x1 - pad) : min(W, x2 + pad)]
             if crop.size == 0:
                 continue
-            ocr_found = strict_ocr_barcode_progressive(crop, iter_level=iter_lvl)
+            ocr_found = strict_ocr_barcode_progressive(crop, iter_level=iter_lvl, deadline=deadline)
             if ocr_found:
                 code, fmt = ocr_found
                 return {
@@ -329,7 +372,7 @@ def extract_barcode_from_bytes(image_bytes: bytes, fast_mode: bool = False) -> D
                     "method_used": f"{stage_label} + EasyOCR (Zoom Lvl {iter_lvl}) + GS1 Checksum",
                     "confidence_score": round(99.5 - (iter_lvl * 1.5), 1),
                     "bbox": [x1, y1, x2, y2] if stage_label != "Full Image Scan" else [],
-                    "processing_time_ms": round((time.time() - t0) * 1000, 1),
+                    "processing_time_ms": round((time.perf_counter() - t0) * 1000, 1),
                 }
 
     return {
@@ -339,5 +382,5 @@ def extract_barcode_from_bytes(image_bytes: bytes, fast_mode: bool = False) -> D
         "method_used": "Gagal Terbaca",
         "confidence_score": 0.0,
         "bbox": [],
-        "processing_time_ms": round((time.time() - t0) * 1000, 1),
+        "processing_time_ms": round((time.perf_counter() - t0) * 1000, 1),
     }
