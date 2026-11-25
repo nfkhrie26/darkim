@@ -189,6 +189,15 @@ export default function HomeScannerPage() {
     }
   };
 
+  // State to toggle scanner view visibility when viewing results
+  const isViewingResult = isScanning || product !== null || scanError !== null;
+
+  const handleOpenScanner = () => {
+    setProduct(null);
+    setEvaluation(null);
+    setScanError(null);
+  };
+
   const handleToggleTableMode = () => {
     const next = tableMode === 'status' ? 'nutrition' : 'status';
     setTableMode(next);
@@ -205,34 +214,44 @@ export default function HomeScannerPage() {
         {/* Left Vertical Floating Sidebar */}
         <Sidebar onToggleTableMode={handleToggleTableMode} onShowToast={showToast} />
 
-        {/* Center Column: Realtime Auto Barcode Scanner Viewfinder */}
-        <CameraScanner
-          onScanImage={handleScanImage}
-          onScanSuccess={handleAutoScanSuccess}
-          onBarcodeNotFound={handleBarcodeNotFound}
-          onTriggerScanMock={handleTriggerScanMock}
-          onOpenReport={() => {
-            setFallbackBarcode(product?.barcode || '');
-            setReportModalOpen(true);
-          }}
-          isScanning={isScanning}
-          selectedProfile={selectedProfile}
-        />
+        {/* Center Column: Camera Scanner (Lebar penuh & imersif saat mode kamera aktif) */}
+        {!isViewingResult && (
+          <CameraScanner
+            onScanImage={handleScanImage}
+            onScanSuccess={handleAutoScanSuccess}
+            onBarcodeNotFound={handleBarcodeNotFound}
+            onTriggerScanMock={handleTriggerScanMock}
+            onOpenReport={() => {
+              setFallbackBarcode('');
+              setContributeModalOpen(true);
+            }}
+            isScanning={isScanning}
+            selectedProfile={selectedProfile}
+            onSelectProfile={handleSelectProfile}
+          />
+        )}
 
-        {/* Right Column: Product Details & Nutritional Value Analysis */}
-        <ScanResultView
-          product={product}
-          evaluation={evaluation}
-          selectedProfile={selectedProfile}
-          onSelectProfile={handleSelectProfile}
-          tableMode={tableMode}
-          onToggleTableMode={handleToggleTableMode}
-          isScanning={isScanning}
-          scanError={scanError}
-          hasPreviousData={Boolean(previousProduct && previousEvaluation)}
-          onReset={handleResetScan}
-          onRestorePrevious={handleRestorePrevious}
-        />
+        {/* Right Column: Product Details & Nutritional Value Analysis (Hanya tampil saat proses scanning atau hasil ada) */}
+        {isViewingResult && (
+          <ScanResultView
+            product={product}
+            evaluation={evaluation}
+            selectedProfile={selectedProfile}
+            onSelectProfile={handleSelectProfile}
+            tableMode={tableMode}
+            onToggleTableMode={handleToggleTableMode}
+            isScanning={isScanning}
+            scanError={scanError}
+            hasPreviousData={Boolean(previousProduct && previousEvaluation)}
+            onReset={handleResetScan}
+            onRestorePrevious={handleRestorePrevious}
+            onOpenReport={() => {
+              setFallbackBarcode(product?.barcode || '');
+              setContributeModalOpen(true);
+            }}
+            onOpenScanner={handleOpenScanner}
+          />
+        )}
       </main>
 
       {/* Modals & Overlays */}

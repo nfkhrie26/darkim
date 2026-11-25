@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { ProductRepository } from '@/services/productRepository';
 import { OpenFoodFactsService } from '@/services/openFoodFactsService';
 
 export async function POST(req: NextRequest) {
@@ -34,7 +33,7 @@ export async function POST(req: NextRequest) {
         }, { status: 400 });
       }
 
-      // Fetch from OFF
+      // Fetch from OFF to verify
       const offProduct = await OpenFoodFactsService.getByBarcode(offBarcode);
       if (!offProduct) {
         return NextResponse.json({
@@ -43,10 +42,26 @@ export async function POST(req: NextRequest) {
         }, { status: 404 });
       }
 
-      // Save to local PostgreSQL with the ticket's barcode!
-      await ProductRepository.createFromOpenFoodFacts(offProduct, ticket.barcode);
+      // If barcode differs, clone to the ticket barcode directly on Open Food Facts
+      if (ticket.barcode !== offBarcode) {
+        await OpenFoodFactsService.writeProduct({
+          barcode: ticket.barcode,
+          name: offProduct.name,
+          brand: offProduct.brand,
+          category: offProduct.category,
+          energy: offProduct.energy,
+          carbohydrates: offProduct.carbohydrates,
+          sugars: offProduct.sugars,
+          fiber: offProduct.fiber,
+          proteins: offProduct.proteins,
+          fat: offProduct.fat,
+          saturatedFat: offProduct.saturatedFat,
+          sodium: offProduct.sodium,
+          salt: offProduct.salt,
+        });
+      }
 
-      // Update ticket to RESOLVED
+      // Update ticket status in DB
       const updatedTicket = await prisma.productTicket.update({
         where: { id: ticketId },
         data: {
@@ -57,7 +72,7 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: `Tiket berhasil diselesaikan. Produk ditautkan ke barcode ${ticket.barcode}.`,
+        message: `Tiket berhasil diselesaikan via Open Food Facts.`,
         ticket: updatedTicket,
       });
     } else if (method === 'MANUAL') {
@@ -68,11 +83,13 @@ export async function POST(req: NextRequest) {
         }, { status: 400 });
       }
 
-      await ProductRepository.upsertManual({
+      // Write directly to Open Food Facts (no local product DB)
+      const offSyncResult = await OpenFoodFactsService.writeProduct({
         barcode: ticket.barcode,
-        name: manualData.name,
-        brand: manualData.brand,
-        category: manualData.category,
+        name: manualData.name.trim(),
+        brand: manualData.brand?.trim() || undefined,
+        category: manualData.category?.trim() || undefined,
+        servingSize: manualData.servingSize?.trim() || undefined,
         energy: manualData.energy ? Number(manualData.energy) : undefined,
         carbohydrates: manualData.carbohydrates ? Number(manualData.carbohydrates) : undefined,
         sugars: manualData.sugars ? Number(manualData.sugars) : undefined,
@@ -82,9 +99,9 @@ export async function POST(req: NextRequest) {
         saturatedFat: manualData.saturatedFat ? Number(manualData.saturatedFat) : undefined,
         sodium: manualData.sodium ? Number(manualData.sodium) : undefined,
         salt: manualData.salt ? Number(manualData.salt) : undefined,
-        image: manualData.image || ticket.frontPhoto || undefined,
       });
 
+      // Update ticket to RESOLVED
       const updatedTicket = await prisma.productTicket.update({
         where: { id: ticketId },
         data: {
@@ -95,8 +112,11 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: `Tiket berhasil diselesaikan secara manual untuk barcode ${ticket.barcode}.`,
+        message: offSyncResult.success
+          ? `Tiket berhasil diselesaikan dan data dikirim ke Open Food Facts (${offSyncResult.environment}).`
+          : `Tiket diselesaikan. Respon OFF: ${offSyncResult.message}`,
         ticket: updatedTicket,
+        offSyncResult,
       });
     } else {
       return NextResponse.json({

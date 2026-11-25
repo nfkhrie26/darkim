@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Icons } from '@/components/ui/Icons';
 
 interface ReportTextModalProps {
   isOpen: boolean;
@@ -55,10 +56,10 @@ export default function ReportTextModal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 text-black hover:text-red-500 font-bold text-lg cursor-pointer transition-colors"
+          className="absolute top-4 right-4 text-black hover:text-red-500 cursor-pointer transition-colors"
           title="Tutup"
         >
-          ✕
+          <Icons.Close className="w-5 h-5 text-black" />
         </button>
 
         <h3 className="text-base sm:text-lg font-black text-black mb-1">

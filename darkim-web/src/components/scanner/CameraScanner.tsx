@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { HealthProfile, ScanApiResponse } from '@/types';
+import ProfileSelector from './ProfileSelector';
+import { Icons } from '@/components/ui/Icons';
 
 interface CameraScannerProps {
   onScanImage: (file: File, mode?: 'fast' | 'deep') => void;
@@ -11,6 +13,7 @@ interface CameraScannerProps {
   onOpenReport: () => void;
   isScanning?: boolean;
   selectedProfile?: HealthProfile;
+  onSelectProfile?: (profile: HealthProfile) => void;
 }
 
 // Native Zero-Dependency Web Audio API synthesizer for barcode scan confirmation
@@ -48,6 +51,7 @@ export default function CameraScanner({
   onOpenReport,
   isScanning = false,
   selectedProfile = 'diabetes',
+  onSelectProfile,
 }: CameraScannerProps) {
   const [activeTab, setActiveTab] = useState<'camera' | 'photo'>('camera');
   const [cameraActive, setCameraActive] = useState<boolean>(false);
@@ -431,50 +435,12 @@ export default function CameraScanner({
   };
 
   return (
-    <section className="w-full lg:w-[420px] shrink-0 flex flex-col gap-3.5">
-      {/* Realtime Live Status Banner */}
-      <div
-        className={`w-full brutal-border brutal-shadow rounded-xl py-2.5 px-4 flex items-center justify-between gap-2.5 transition-colors duration-300 ${
-          scanSuccessFlash
-            ? 'bg-[#00D084]'
-            : isAutoScanPaused
-            ? 'bg-amber-100'
-            : 'bg-[#FFD027]'
-        }`}
-      >
-        <div className="flex items-center gap-2 min-w-0">
-          {activeTab === 'camera' && (
-            <span
-              className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                isAutoScanPaused ? 'bg-amber-600' : 'bg-red-600 animate-ping'
-              }`}
-            />
-          )}
-          <span className="font-black text-xs sm:text-sm tracking-tight text-black truncate">
-            {activeTab === 'camera'
-              ? scanSuccessFlash
-                ? `✓ BARCODE TERDETEKSI: ${lastDetectedBarcode || ''}`
-                : isAutoScanPaused
-                ? 'PEMINDAIAN OTOMATIS DIJEDA'
-                : 'PEMINDAIAN OTOMATIS AKTIF'
-              : selectedPhotoPreview
-              ? 'FOTO DIPILIH DARI GALERI'
-              : 'PILIH FOTO BARCODE DARI GALERI'}
-          </span>
-        </div>
-
-        {activeTab === 'camera' && cameraActive && (
-          <span className="text-[10px] font-black bg-black text-white px-2 py-0.5 rounded uppercase tracking-wider shrink-0">
-            {isAutoScanPaused ? 'PAUSED' : fpsIndicator}
-          </span>
-        )}
-      </div>
-
+    <section className="flex-1 w-full max-w-5xl mx-auto flex flex-col gap-3.5">
       {/* Scanner Box / Viewfinder Container */}
-      <div className="w-full bg-white brutal-border brutal-shadow rounded-2xl p-3 flex flex-col gap-2.5">
-        {/* Viewfinder Top Bar / Mode Switcher */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+      <div className="w-full bg-white brutal-border brutal-shadow rounded-2xl p-3.5 flex flex-col gap-3">
+        {/* Viewfinder Top Bar / Mode Switcher & Profile Selector */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             {/* 1. Camera Tab */}
             <button
               type="button"
@@ -484,10 +450,7 @@ export default function CameraScanner({
                 activeTab === 'camera' ? 'bg-[#00D084]' : 'bg-white hover:bg-gray-50'
               } brutal-border-sm brutal-shadow-sm flex items-center gap-1.5 text-xs font-black uppercase text-black brutal-btn cursor-pointer`}
             >
-              <svg className="w-4 h-4 text-black" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                <circle cx="12" cy="13" r="3" />
-              </svg>
+              <Icons.Camera className="w-4 h-4 text-black" />
               <span>Kamera</span>
             </button>
 
@@ -500,33 +463,36 @@ export default function CameraScanner({
                 activeTab === 'photo' ? 'bg-[#00D084]' : 'bg-white hover:bg-gray-50'
               } brutal-border-sm brutal-shadow-sm flex items-center gap-1.5 text-xs font-black uppercase text-black brutal-btn cursor-pointer`}
             >
-              <svg className="w-4 h-4 text-black" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
-              </svg>
+              <Icons.Gallery className="w-4 h-4 text-black" />
               <span>Galeri</span>
             </button>
+
+            {/* Pause / Resume Auto-Scan Toggle (Only on Camera tab) */}
+            {activeTab === 'camera' && cameraActive && (
+              <button
+                type="button"
+                onClick={() => setIsAutoScanPaused((prev) => !prev)}
+                title={isAutoScanPaused ? 'Lanjutkan Auto-Scan' : 'Jeda Auto-Scan'}
+                className="bg-gray-100 hover:bg-gray-200 brutal-border-sm rounded-lg px-2.5 py-1 text-[11px] font-black uppercase flex items-center gap-1.5 text-black cursor-pointer"
+              >
+                {isAutoScanPaused ? (
+                  <>
+                    <Icons.Play className="w-3 h-3 text-black" />
+                    <span>Lanjut</span>
+                  </>
+                ) : (
+                  <>
+                    <Icons.Pause className="w-3 h-3 text-black" />
+                    <span>Jeda</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
-          {/* Pause / Resume Auto-Scan Toggle (Only on Camera tab) */}
-          {activeTab === 'camera' && cameraActive && (
-            <button
-              type="button"
-              onClick={() => setIsAutoScanPaused((prev) => !prev)}
-              title={isAutoScanPaused ? 'Lanjutkan Auto-Scan' : 'Jeda Auto-Scan'}
-              className="bg-gray-100 hover:bg-gray-200 brutal-border-sm rounded-lg px-2.5 py-1 text-[11px] font-black uppercase flex items-center gap-1 text-black cursor-pointer"
-            >
-              {isAutoScanPaused ? (
-                <>
-                  <span>▶</span> Lanjut
-                </>
-              ) : (
-                <>
-                  <span>⏸</span> Jeda
-                </>
-              )}
-            </button>
+          {/* Health Profile Selector (Hipertensi / Diabetes) */}
+          {onSelectProfile && (
+            <ProfileSelector selectedProfile={selectedProfile} onSelectProfile={onSelectProfile} />
           )}
 
           {/* Hidden File Input for Photo tab */}
@@ -539,9 +505,9 @@ export default function CameraScanner({
           />
         </div>
 
-        {/* Viewfinder Screen Container */}
+        {/* Viewfinder Screen Container (Wide on PC / Desktop) */}
         <div
-          className={`relative w-full aspect-[4/5] bg-black brutal-border rounded-xl overflow-hidden flex items-center justify-center select-none transition-all duration-300 ${
+          className={`relative w-full aspect-[4/5] sm:aspect-[16/10] lg:aspect-[16/9] max-h-[540px] bg-black brutal-border rounded-2xl overflow-hidden flex items-center justify-center select-none transition-all duration-300 ${
             scanSuccessFlash ? 'ring-4 ring-[#00D084]' : ''
           }`}
         >
@@ -574,8 +540,8 @@ export default function CameraScanner({
               {!cameraActive ? (
                 /* Camera Inactive / Error Fallback */
                 <div className="w-full h-full bg-[#171514] flex flex-col items-center justify-center p-6 text-center text-white">
-                  <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center mb-3 text-2xl">
-                    📷
+                  <div className="w-14 h-14 rounded-2xl bg-white/10 brutal-border-sm flex items-center justify-center mb-3">
+                    <Icons.Camera className="w-7 h-7 text-white" />
                   </div>
                   <p className="text-xs font-bold leading-relaxed mb-3">
                     {cameraError || 'Membuka kamera untuk pemindaian otomatis...'}
@@ -592,12 +558,9 @@ export default function CameraScanner({
                 /* Active Viewfinder Overlays */
                 <>
                   {/* Center Guidance Box */}
-                  <div className="absolute inset-10 sm:inset-12 border-2 border-dashed border-white/60 rounded-xl pointer-events-none z-10 flex flex-col items-center justify-between p-2">
-                    <span className="text-[10px] font-black tracking-wider uppercase bg-black/60 text-white px-2 py-0.5 rounded backdrop-blur-sm">
+                  <div className="absolute inset-x-6 sm:inset-x-auto sm:w-[480px] sm:left-1/2 sm:-translate-x-1/2 top-10 bottom-16 sm:top-12 sm:bottom-20 border-2 border-dashed border-white/60 rounded-2xl pointer-events-none z-10 flex flex-col items-center justify-start p-3">
+                    <span className="text-[10px] sm:text-xs font-black tracking-wider uppercase bg-black/75 text-white px-3 py-1 rounded-lg backdrop-blur-sm shadow-sm">
                       {isAutoScanPaused ? 'PEMINDAIAN DIJEDA' : 'DEKATKAN BARCODE KE AREA INI'}
-                    </span>
-                    <span className="text-[9px] font-bold text-white/70 bg-black/40 px-2 py-0.5 rounded">
-                      Fokus otomatis tanpa perlu memencet tombol
                     </span>
                   </div>
 
@@ -617,12 +580,9 @@ export default function CameraScanner({
                       title="Pindai Mendalam / Jepret Manual (Deep OCR Scan)"
                       disabled={isScanning}
                       onClick={handleManualDeepScan}
-                      className="bg-white/90 hover:bg-white text-black brutal-border-sm brutal-shadow-sm px-3 py-1.5 rounded-xl font-black text-[11px] uppercase flex items-center gap-1.5 backdrop-blur-sm brutal-btn cursor-pointer"
+                      className="bg-white/95 hover:bg-white text-black brutal-border-sm brutal-shadow-sm px-3.5 py-1.5 rounded-xl font-black text-[11px] uppercase flex items-center gap-1.5 backdrop-blur-sm brutal-btn cursor-pointer"
                     >
-                      <svg className="w-4 h-4 text-black" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="3" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      </svg>
+                      <Icons.Sparkles className="w-4 h-4 text-black" />
                       <span>Deep Scan</span>
                     </button>
 
@@ -631,11 +591,9 @@ export default function CameraScanner({
                       type="button"
                       title="Mulai Ulang Kamera"
                       onClick={startCamera}
-                      className="bg-black/80 hover:bg-black text-white brutal-border-sm px-2.5 py-1.5 rounded-xl font-black text-[11px] uppercase flex items-center gap-1 backdrop-blur-sm cursor-pointer"
+                      className="bg-black/80 hover:bg-black text-white brutal-border-sm px-2.5 py-1.5 rounded-xl font-black text-[11px] uppercase flex items-center gap-1.5 backdrop-blur-sm cursor-pointer"
                     >
-                      <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                      </svg>
+                      <Icons.Refresh className="w-3.5 h-3.5 text-white" />
                       <span>Reset</span>
                     </button>
                   </div>
@@ -672,11 +630,7 @@ export default function CameraScanner({
                   className="w-full h-full bg-white flex flex-col items-center justify-center p-6 text-center cursor-pointer hover:bg-gray-50 transition-colors"
                 >
                   <div className="w-20 h-20 rounded-2xl bg-[#E6F1EA] brutal-border brutal-shadow flex items-center justify-center mb-4">
-                    <svg className="w-10 h-10 text-black" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                      <circle cx="8.5" cy="8.5" r="1.5" />
-                      <polyline points="21 15 16 10 5 21" />
-                    </svg>
+                    <Icons.Gallery className="w-10 h-10 text-black" />
                   </div>
                   <span className="font-black text-sm uppercase tracking-wider text-black mb-1">
                     PILIH FOTO DARI GALERI

@@ -63,6 +63,7 @@ export class ProductRepository {
     name: string;
     brand?: string;
     category?: string;
+    servingSize?: string;
     energy?: number;
     carbohydrates?: number;
     sugars?: number;
@@ -75,6 +76,8 @@ export class ProductRepository {
     image?: string;
   }) {
     const barcode = data.barcode.trim();
+    const rawData = data.servingSize ? { serving_size: data.servingSize.trim() } : undefined;
+
     return await prisma.product.upsert({
       where: { barcode },
       update: {
@@ -91,6 +94,7 @@ export class ProductRepository {
         sodium: data.sodium ?? null,
         salt: data.salt ?? null,
         image: data.image ?? null,
+        ...(rawData ? { rawData } : {}),
       },
       create: {
         barcode,
@@ -107,6 +111,7 @@ export class ProductRepository {
         sodium: data.sodium ?? null,
         salt: data.salt ?? null,
         image: data.image ?? null,
+        rawData: rawData ?? undefined,
       },
     });
   }

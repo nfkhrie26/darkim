@@ -76,19 +76,18 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // 2. Step 1: Check Local PostgreSQL Database
-    let product = await ProductRepository.findByBarcode(barcode);
+    // 2. Query directly from OpenFoodFacts (Global Single Source of Truth, no local DB caching needed)
+    let product: any = null;
+    const offProduct = await OpenFoodFactsService.getByBarcode(barcode);
 
-    // 3. Step 2: Auto-fetch from OpenFoodFacts if not in DB
-    if (!product) {
-      const offProduct = await OpenFoodFactsService.getByBarcode(barcode);
-      if (offProduct) {
-        // Step 3: Auto-Insert Cache to PostgreSQL
-        product = await ProductRepository.createFromOpenFoodFacts(offProduct);
-      }
+    if (offProduct) {
+      product = OpenFoodFactsService.toProductModel(offProduct);
+    } else {
+      // Optional fallback to local DB if previously seeded or offline
+      product = await ProductRepository.findByBarcode(barcode);
     }
 
-    // 4. Step 4: Fallback Crowdsourcing if still not found anywhere
+    // 3. Fallback Crowdsourcing if still not found
     if (!product) {
       return NextResponse.json({
         success: false,
@@ -97,7 +96,7 @@ export async function POST(req: NextRequest) {
         barcode,
         stage: mlStage,
         time_ms: mlTimeMs,
-        message: 'Produk tidak ditemukan pada database lokal maupun OpenFoodFacts.',
+        message: 'Produk tidak ditemukan di OpenFoodFacts.',
       }, { status: 404 });
     }
 

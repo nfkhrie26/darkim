@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Icons } from '@/components/ui/Icons';
 
 interface OffCandidate {
   barcode: string;
@@ -50,51 +51,69 @@ export default function OffFuzzySearchBox({
   };
 
   return (
-    <div className="flex flex-col gap-3 w-full">
+    <div className="flex flex-col gap-3.5 w-full">
       <form onSubmit={handleSearch} className="flex gap-2">
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Ketik nama produk untuk mencari di OpenFoodFacts..."
-          className="flex-1 brutal-border-sm rounded-xl px-3.5 py-2 text-xs sm:text-sm font-semibold text-black focus:outline-none focus:ring-2 focus:ring-black"
+          className="flex-1 bg-white brutal-border-sm rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-black focus:outline-none focus:ring-2 focus:ring-black placeholder:text-gray-400"
         />
         <button
           type="submit"
           disabled={loading}
-          className="bg-[#FFD027] brutal-border-sm brutal-shadow-sm rounded-xl px-4 py-2 font-black text-xs uppercase tracking-wider text-black brutal-btn cursor-pointer shrink-0 disabled:opacity-50"
+          className="bg-[#FFD027] brutal-border brutal-shadow-sm rounded-xl px-4 py-2 font-black text-xs uppercase tracking-wider text-black brutal-btn cursor-pointer shrink-0 disabled:opacity-50 inline-flex items-center gap-1.5"
         >
-          {loading ? 'Mencari...' : 'Cari OFF'}
+          {loading ? (
+            <>
+              <Icons.Refresh className="w-3.5 h-3.5 animate-spin text-black" />
+              <span>Mencari...</span>
+            </>
+          ) : (
+            <>
+              <Icons.Search className="w-3.5 h-3.5 text-black" />
+              <span>Cari OFF</span>
+            </>
+          )}
         </button>
       </form>
 
       {/* Results List */}
-      <div className="max-h-64 overflow-y-auto flex flex-col gap-2 pr-1">
+      <div className="max-h-80 overflow-y-auto flex flex-col gap-2.5 pr-1">
         {results.map((item, idx) => (
           <div
             key={idx}
-            className="p-3 bg-white brutal-border-sm rounded-xl flex items-center justify-between gap-3 hover:bg-gray-50 transition-colors"
+            className="p-3.5 bg-white brutal-border-sm brutal-shadow-sm rounded-xl flex items-center justify-between gap-3 hover:bg-gray-50 transition-colors"
           >
             <div className="flex items-center gap-3 min-w-0">
               {item.image ? (
                 <img
                   src={item.image}
                   alt={item.name}
-                  className="w-10 h-10 object-cover rounded-md border border-black shrink-0"
+                  className="w-12 h-12 object-cover rounded-lg brutal-border-sm shrink-0"
                 />
               ) : (
-                <div className="w-10 h-10 bg-gray-200 border border-black rounded-md flex items-center justify-center text-[10px] font-bold text-gray-600 shrink-0">
+                <div className="w-12 h-12 bg-gray-200 brutal-border-sm rounded-lg flex items-center justify-center text-[10px] font-black text-gray-700 shrink-0">
                   OFF
                 </div>
               )}
               <div className="min-w-0">
                 <p className="text-xs font-black text-black truncate">{item.name}</p>
-                <p className="text-[11px] text-gray-500 font-medium truncate">
-                  {item.brand} • Barcode OFF: {item.barcode}
+                <p className="text-[11px] text-gray-600 font-medium truncate mt-0.5">
+                  {item.brand || 'Tanpa Brand'} • Barcode: <span className="font-mono font-bold text-black">{item.barcode}</span>
                 </p>
-                <p className="text-[10px] font-bold text-gray-700">
-                  Energi: {item.energy ?? 0} kkal | Gula: {item.sugars ?? 0}g | Natrium: {item.sodium ?? 0}mg
-                </p>
+                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                  <span className="bg-gray-100 brutal-border-sm px-1.5 py-0.5 rounded text-[10px] font-mono font-bold text-black">
+                    Kalori: {item.energy ?? 0} kkal
+                  </span>
+                  <span className="bg-amber-100 brutal-border-sm px-1.5 py-0.5 rounded text-[10px] font-mono font-bold text-black">
+                    Gula: {item.sugars ?? 0}g
+                  </span>
+                  <span className="bg-rose-100 brutal-border-sm px-1.5 py-0.5 rounded text-[10px] font-mono font-bold text-black">
+                    Natrium: {item.sodium ?? 0}mg
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -102,20 +121,25 @@ export default function OffFuzzySearchBox({
               type="button"
               disabled={isResolving}
               onClick={() => onSelectCandidate(item.barcode)}
-              className="bg-[#00D084] brutal-border-sm brutal-shadow-sm rounded-lg px-3 py-1.5 text-[11px] font-black uppercase text-black brutal-btn shrink-0 cursor-pointer disabled:opacity-50"
+              className="bg-[#00D084] brutal-border-sm brutal-shadow-sm rounded-lg px-3.5 py-2 text-[11px] font-black uppercase tracking-wider text-black brutal-btn shrink-0 cursor-pointer disabled:opacity-50 inline-flex items-center gap-1"
             >
-              Import & Tautkan
+              <Icons.Check className="w-3.5 h-3.5 text-black" />
+              <span>Import & Tautkan</span>
             </button>
           </div>
         ))}
 
         {hasSearched && results.length === 0 && !loading && (
-          <p className="text-xs text-center font-bold text-gray-500 py-4">
-            Tidak ditemukan produk di OpenFoodFacts dengan kata kunci &quot;{query}&quot;.
-          </p>
+          <div className="p-6 text-center bg-gray-50 brutal-border-sm rounded-xl">
+            <p className="text-xs font-bold text-gray-600">
+              Tidak ditemukan produk di OpenFoodFacts dengan kata kunci &quot;{query}&quot;.
+            </p>
+            <p className="text-[11px] text-gray-400 mt-1">
+              Gunakan mode <b>Input Gizi Manual</b> untuk memasukkan data produk baru secara langsung.
+            </p>
+          </div>
         )}
       </div>
     </div>
   );
 }
-

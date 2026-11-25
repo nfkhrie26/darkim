@@ -16,8 +16,9 @@ export interface NutritionTableItem {
 
 export interface NutritionEvaluation {
   profile: HealthProfile;
-  badge: 'AMAN' | 'HATI-HATI' | 'TIDAK AMAN';
+  badge: 'AMAN' | 'HATI-HATI' | 'TIDAK AMAN' | 'DATA TIDAK LENGKAP';
   badgeBg: string;
+  isDataIncomplete?: boolean;
   safePoints: string[];
   warningPoints: string[];
   statusTable: NutritionStatusItem[];

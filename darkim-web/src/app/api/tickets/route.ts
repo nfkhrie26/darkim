@@ -15,6 +15,29 @@ export async function POST(req: NextRequest) {
       const formData = await req.formData();
       barcode = (formData.get('barcode') as string || '').trim();
       description = (formData.get('description') as string || null);
+      const rawManualData = formData.get('manualData') as string | null;
+
+      if (rawManualData) {
+        try {
+          const m = JSON.parse(rawManualData);
+          description = JSON.stringify({
+            isManualInput: true,
+            productName: m.name || 'Produk Tanpa Nama',
+            brand: m.brand || '',
+            category: m.category || 'Makanan & Minuman',
+            servingSize: m.servingSize || '',
+            energy: m.energy !== undefined && m.energy !== null ? Number(m.energy) : null,
+            carbohydrates: m.carbohydrates !== undefined && m.carbohydrates !== null ? Number(m.carbohydrates) : null,
+            sugars: m.sugars !== undefined && m.sugars !== null ? Number(m.sugars) : null,
+            fat: m.fat !== undefined && m.fat !== null ? Number(m.fat) : null,
+            saturatedFat: m.saturatedFat !== undefined && m.saturatedFat !== null ? Number(m.saturatedFat) : null,
+            proteins: m.proteins !== undefined && m.proteins !== null ? Number(m.proteins) : null,
+            sodium: m.sodium !== undefined && m.sodium !== null ? Number(m.sodium) : null,
+            fiber: m.fiber !== undefined && m.fiber !== null ? Number(m.fiber) : null,
+            userNote: description || '',
+          });
+        } catch {}
+      }
 
       const frontFile = formData.get('frontPhoto') as File | null;
       const nutritionFile = formData.get('nutritionPhoto') as File | null;
@@ -45,6 +68,26 @@ export async function POST(req: NextRequest) {
       const body = await req.json().catch(() => ({}));
       barcode = (body.barcode || '').trim();
       description = body.description || null;
+
+      if (body.manualData) {
+        const m = body.manualData;
+        description = JSON.stringify({
+          isManualInput: true,
+          productName: m.name || 'Produk Tanpa Nama',
+          brand: m.brand || '',
+          category: m.category || 'Makanan & Minuman',
+          servingSize: m.servingSize || '',
+          energy: m.energy !== undefined && m.energy !== null ? Number(m.energy) : null,
+          carbohydrates: m.carbohydrates !== undefined && m.carbohydrates !== null ? Number(m.carbohydrates) : null,
+          sugars: m.sugars !== undefined && m.sugars !== null ? Number(m.sugars) : null,
+          fat: m.fat !== undefined && m.fat !== null ? Number(m.fat) : null,
+          saturatedFat: m.saturatedFat !== undefined && m.saturatedFat !== null ? Number(m.saturatedFat) : null,
+          proteins: m.proteins !== undefined && m.proteins !== null ? Number(m.proteins) : null,
+          sodium: m.sodium !== undefined && m.sodium !== null ? Number(m.sodium) : null,
+          fiber: m.fiber !== undefined && m.fiber !== null ? Number(m.fiber) : null,
+          userNote: body.description || '',
+        });
+      }
     }
 
     if (!barcode) {
@@ -81,6 +124,16 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+
+    if (id) {
+      const ticket = await prisma.productTicket.findUnique({ where: { id } });
+      if (!ticket) {
+        return NextResponse.json({ success: false, message: 'Tiket tidak ditemukan.' }, { status: 404 });
+      }
+      return NextResponse.json({ success: true, ticket });
+    }
+
     const status = searchParams.get('status');
 
     const where: any = {};

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { TicketModel } from '@/types';
 import OffFuzzySearchBox from './OffFuzzySearchBox';
+import { Icons } from '@/components/ui/Icons';
 
 interface TicketDetailModalProps {
   ticket: TicketModel | null;
@@ -24,6 +25,7 @@ export default function TicketDetailModal({
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('');
   const [category, setCategory] = useState('Makanan & Minuman');
+  const [servingSize, setServingSize] = useState('100 ml');
   const [energy, setEnergy] = useState('');
   const [carbs, setCarbs] = useState('');
   const [sugars, setSugars] = useState('');
@@ -33,6 +35,7 @@ export default function TicketDetailModal({
   const [saturatedFat, setSaturatedFat] = useState('');
   const [sodium, setSodium] = useState('');
   const [salt, setSalt] = useState('');
+  const [syncToOff, setSyncToOff] = useState(true);
 
   if (!isOpen || !ticket) return null;
 
@@ -85,6 +88,7 @@ export default function TicketDetailModal({
             name: name.trim(),
             brand: brand.trim() || undefined,
             category: category.trim() || undefined,
+            servingSize: servingSize.trim() || undefined,
             energy: energy ? Number(energy) : undefined,
             carbohydrates: carbs ? Number(carbs) : undefined,
             sugars: sugars ? Number(sugars) : undefined,
@@ -94,6 +98,7 @@ export default function TicketDetailModal({
             saturatedFat: saturatedFat ? Number(saturatedFat) : undefined,
             sodium: sodium ? Number(sodium) : undefined,
             salt: salt ? Number(salt) : undefined,
+            syncToOff,
           },
         }),
       });
@@ -119,9 +124,10 @@ export default function TicketDetailModal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 text-black hover:text-red-500 font-bold text-lg cursor-pointer"
+          className="absolute top-4 right-4 text-black hover:text-red-500 cursor-pointer transition-colors"
+          title="Tutup"
         >
-          ✕
+          <Icons.Close className="w-5 h-5 text-black" />
         </button>
 
         <div className="flex items-center gap-3 mb-4">
@@ -239,6 +245,17 @@ export default function TicketDetailModal({
               </div>
 
               <div>
+                <label className="font-bold text-black block mb-1">Takaran Saji (Serving Size)</label>
+                <input
+                  type="text"
+                  value={servingSize}
+                  onChange={(e) => setServingSize(e.target.value)}
+                  placeholder="Contoh: 100 ml atau 250 ml (1 botol)"
+                  className="w-full brutal-border-sm rounded-lg p-2 font-medium"
+                />
+              </div>
+
+              <div>
                 <label className="font-bold text-black block mb-1">Energi / Kalori (kkal)</label>
                 <input
                   type="number"
@@ -335,6 +352,20 @@ export default function TicketDetailModal({
                   onChange={(e) => setSalt(e.target.value)}
                   className="w-full brutal-border-sm rounded-lg p-2"
                 />
+              </div>
+
+              <div className="sm:col-span-2 bg-emerald-50 border-2 border-black/20 rounded-xl p-3 flex items-center gap-2.5">
+                <input
+                  type="checkbox"
+                  id="ticketSyncToOff"
+                  checked={syncToOff}
+                  onChange={(e) => setSyncToOff(e.target.checked)}
+                  className="w-4 h-4 accent-[#00D084] cursor-pointer rounded"
+                />
+                <label htmlFor="ticketSyncToOff" className="font-bold text-black text-xs cursor-pointer select-none flex items-center gap-1.5">
+                  <Icons.Globe className="w-3.5 h-3.5 text-black" />
+                  <span>Kirim & Sinkronkan juga ke Open Food Facts</span>
+                </label>
               </div>
 
               <div className="sm:col-span-2 flex justify-end gap-2 mt-3">
