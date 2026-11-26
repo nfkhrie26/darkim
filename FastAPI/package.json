@@ -1,0 +1,13 @@
+{
+  "name": "fastapi",
+  "version": "1.0.0",
+  "description": "FastAPI service runner for DARKIM ML Barcode Extractor",
+  "main": "index.js",
+  "scripts": {
+    "darkim": "cd darkim-ml/ml-api && .\\.venv\\Scripts\\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
