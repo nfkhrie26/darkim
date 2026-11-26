@@ -26,11 +26,16 @@ export default function CatalogPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Monitor scroll threshold to toggle sticky header into inline search row
+  // Monitor scroll threshold to toggle sticky header action visibility
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 80);
+      const scrolled = window.scrollY > 80;
+      setIsScrolled(scrolled);
+      if (!scrolled) {
+        setIsSearchOpen(false);
+      }
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -120,11 +125,13 @@ export default function CatalogPage() {
 
   return (
     <div className="min-h-screen flex flex-col p-4 sm:p-6 lg:p-8 pb-24 md:pb-8 bg-[#E6F1EA]">
-      {/* Sticky Floating Header: Replaces Logo + Nav with Inline Search Bar when scrolled */}
+      {/* Sticky Floating Header: Default Logo + Nav with Action Icons; Morphs to Inline Search Bar when search is clicked */}
       <Header
         stickyOverride={
-          isScrolled ? (
+          isScrolled && isSearchOpen ? (
             <CatalogFloatingActions
+              isExpanded
+              onClose={() => setIsSearchOpen(false)}
               searchQuery={inputQuery}
               onSearchChange={setInputQuery}
               selectedCategory={selectedCategory}
@@ -132,7 +139,21 @@ export default function CatalogPage() {
               onSubmitSearch={handleSubmitSearch}
               onClearSearch={handleClearSearch}
               isLoading={isLoading}
-              onBackToTop={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            />
+          ) : undefined
+        }
+        rightContent={
+          isScrolled && !isSearchOpen ? (
+            <CatalogFloatingActions
+              isExpanded={false}
+              onOpen={() => setIsSearchOpen(true)}
+              searchQuery={inputQuery}
+              onSearchChange={setInputQuery}
+              selectedCategory={selectedCategory}
+              onCategoryChange={handleCategoryChange}
+              onSubmitSearch={handleSubmitSearch}
+              onClearSearch={handleClearSearch}
+              isLoading={isLoading}
             />
           ) : undefined
         }

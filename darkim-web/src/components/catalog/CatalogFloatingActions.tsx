@@ -12,7 +12,9 @@ interface CatalogFloatingActionsProps {
   onSubmitSearch: () => void;
   onClearSearch?: () => void;
   isLoading?: boolean;
-  onBackToTop?: () => void;
+  isExpanded?: boolean;
+  onOpen?: () => void;
+  onClose?: () => void;
 }
 
 export default function CatalogFloatingActions({
@@ -23,23 +25,37 @@ export default function CatalogFloatingActions({
   onSubmitSearch,
   onClearSearch,
   isLoading = false,
-  onBackToTop,
+  isExpanded = false,
+  onOpen,
+  onClose,
 }: CatalogFloatingActionsProps) {
   const [categoryOpen, setCategoryOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Support Escape key to close category dropdown
+  // Autofocus input saat mode pencarian terbuka
+  useEffect(() => {
+    if (isExpanded) {
+      const timer = setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isExpanded]);
+
+  // Handle tombol Escape
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setCategoryOpen(false);
+        if (categoryOpen) {
+          setCategoryOpen(false);
+        } else if (isExpanded && onClose) {
+          onClose();
+        }
       }
     };
-    if (categoryOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-    }
+    window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [categoryOpen]);
+  }, [categoryOpen, isExpanded, onClose]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,21 +67,108 @@ export default function CatalogFloatingActions({
     setCategoryOpen(false);
   };
 
-  const handleBack = () => {
-    if (onBackToTop) {
-      onBackToTop();
-    } else if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
+  // Reusable Category Dropdown Menu
+  const renderCategoryDropdown = () => (
+    <>
+      {/* Invisible backdrop for easy outside clicks */}
+      <div
+        className="fixed inset-0 z-40"
+        onClick={() => setCategoryOpen(false)}
+      />
 
+      <div
+        className="absolute top-full right-0 mt-2 z-50 w-56 sm:w-64 bg-white brutal-border-lg brutal-shadow-lg rounded-2xl p-2.5 animate-in fade-in zoom-in-95 duration-150 pointer-events-auto shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-2 py-1 mb-1 border-b-2 border-black/10">
+          <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">
+            Pilih Kategori
+          </span>
+          <button
+            type="button"
+            onClick={() => setCategoryOpen(false)}
+            className="text-gray-400 hover:text-black text-xs font-black cursor-pointer p-0.5"
+            title="Tutup"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-1 max-h-72 overflow-y-auto custom-scrollbar pr-0.5">
+          {CATALOG_CATEGORY_OPTIONS.map((cat) => {
+            const isSelected = selectedCategory === cat.value;
+            return (
+              <button
+                key={cat.value}
+                type="button"
+                onClick={() => handleSelectCategory(cat.value)}
+                className={`w-full py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-between brutal-btn cursor-pointer text-left ${
+                  isSelected
+                    ? 'bg-[#00D084] text-black brutal-border-sm brutal-shadow-sm'
+                    : 'bg-white text-black hover:bg-gray-50 brutal-border-sm'
+                }`}
+              >
+                <span className="truncate pr-2">{cat.label}</span>
+                {isSelected && <Icons.Check className="w-3.5 h-3.5 text-black shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+
+  // KONDISI 1: Mode Biasa (belum diklik) -> Logo Darkim & Navbar tetap tampil, hanya tombol icon di kanan
+  if (!isExpanded) {
+    return (
+      <div className="flex items-center gap-2 animate-in fade-in duration-150">
+        {/* Tombol Search (Icon) -> Klik untuk membuka form search inline di navbar */}
+        <button
+          type="button"
+          onClick={onOpen}
+          title="Buka Pencarian Katalog"
+          className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl brutal-border brutal-shadow flex items-center justify-center brutal-btn cursor-pointer transition-colors ${
+            searchQuery ? 'bg-[#00D084]' : 'bg-[#FFD027] hover:bg-[#ffe066]'
+          }`}
+        >
+          <Icons.Search className="w-5 h-5 text-black shrink-0" />
+        </button>
+
+        {/* Tombol Filter Kategori (Icon with anchored dropdown) */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setCategoryOpen(!categoryOpen)}
+            title="Filter Kategori Produk"
+            className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl brutal-border brutal-shadow flex items-center justify-center brutal-btn cursor-pointer transition-colors ${
+              selectedCategory !== 'all' ? 'bg-[#00D084]' : 'bg-white hover:bg-gray-50'
+            }`}
+          >
+            <svg
+              className="w-5 h-5 text-black shrink-0"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              viewBox="0 0 24 24"
+            >
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+            </svg>
+          </button>
+
+          {categoryOpen && renderCategoryDropdown()}
+        </div>
+      </div>
+    );
+  }
+
+  // KONDISI 2: Mode Search Terbuka (search diklik) -> Logo & Navbar disembunyikan, form inline membentang dengan tombol kembali
   return (
     <div className="w-full flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
-      {/* 1. Tombol Kembali: Menggantikan Logo & Navbar ketika discroll, klik untuk kembali ke atas */}
+      {/* 1. Tombol Kembali: Menutup form search dan mengembalikan Logo Darkim + Navbar */}
       <button
         type="button"
-        onClick={handleBack}
-        title="Kembali ke atas"
+        onClick={onClose}
+        title="Tutup pencarian dan kembali ke navigasi"
         className="h-11 sm:h-12 px-3 sm:px-4 bg-white brutal-border brutal-shadow rounded-2xl flex items-center justify-center gap-1.5 brutal-btn cursor-pointer shrink-0 hover:bg-[#FFD027] transition-colors"
       >
         <Icons.ArrowLeft className="w-5 h-5 text-black shrink-0" />
@@ -111,7 +214,7 @@ export default function CatalogFloatingActions({
         </button>
       </form>
 
-      {/* 3. Dropdown Filter Kategori */}
+      {/* 3. Dropdown Filter Kategori Langsung di Ujung Bar */}
       <div className="relative shrink-0">
         <button
           type="button"
@@ -136,55 +239,7 @@ export default function CatalogFloatingActions({
           <Icons.ChevronDown className="w-3.5 h-3.5 text-black shrink-0" />
         </button>
 
-        {categoryOpen && (
-          <>
-            {/* Invisible backdrop for easy outside clicks */}
-            <div
-              className="fixed inset-0 z-40"
-              onClick={() => setCategoryOpen(false)}
-            />
-
-            <div
-              className="absolute top-full right-0 mt-2 z-50 w-56 sm:w-64 bg-white brutal-border-lg brutal-shadow-lg rounded-2xl p-2.5 animate-in fade-in zoom-in-95 duration-150 pointer-events-auto shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between px-2 py-1 mb-1 border-b-2 border-black/10">
-                <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">
-                  Pilih Kategori
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setCategoryOpen(false)}
-                  className="text-gray-400 hover:text-black text-xs font-black cursor-pointer p-0.5"
-                  title="Tutup"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-1 max-h-72 overflow-y-auto custom-scrollbar pr-0.5">
-                {CATALOG_CATEGORY_OPTIONS.map((cat) => {
-                  const isSelected = selectedCategory === cat.value;
-                  return (
-                    <button
-                      key={cat.value}
-                      type="button"
-                      onClick={() => handleSelectCategory(cat.value)}
-                      className={`w-full py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-between brutal-btn cursor-pointer text-left ${
-                        isSelected
-                          ? 'bg-[#00D084] text-black brutal-border-sm brutal-shadow-sm'
-                          : 'bg-white text-black hover:bg-gray-50 brutal-border-sm'
-                      }`}
-                    >
-                      <span className="truncate pr-2">{cat.label}</span>
-                      {isSelected && <Icons.Check className="w-3.5 h-3.5 text-black shrink-0" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </>
-        )}
+        {categoryOpen && renderCategoryDropdown()}
       </div>
     </div>
   );
