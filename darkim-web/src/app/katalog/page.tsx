@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/Header';
 import Toast from '@/components/Toast';
 import CatalogSearchBar from '@/components/catalog/CatalogSearchBar';
+import CatalogMobileFloatingActions from '@/components/catalog/CatalogMobileFloatingActions';
 import ProductCard from '@/components/catalog/ProductCard';
 import CatalogPagination from '@/components/catalog/CatalogPagination';
 import { Icons } from '@/components/ui/Icons';
@@ -20,7 +21,6 @@ export default function CatalogPage() {
   const [products, setProducts] = useState<CatalogProductItem[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [source, setSource] = useState<'openfoodfacts' | 'local-fallback'>('openfoodfacts');
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -55,7 +55,6 @@ export default function CatalogPage() {
         setProducts(data.products || []);
         setTotalPages(data.totalPages || 1);
         setTotalCount(data.totalCount || 0);
-        setSource(data.source || 'openfoodfacts');
 
         if (data.source === 'local-fallback' && data.message) {
           showToast(data.message);
@@ -110,14 +109,26 @@ export default function CatalogPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col p-4 sm:p-6 lg:p-8 pb-24 md:pb-8">
-      {/* Sticky Floating Header & Responsive 2-Tab Navbar */}
-      <Header />
+    <div className="min-h-screen flex flex-col p-4 sm:p-6 lg:p-8 pb-24 md:pb-8 bg-[#E6F1EA]">
+      {/* Sticky Floating Header with perfectly aligned Top-Right Mobile Action Icons */}
+      <Header
+        rightContent={
+          <CatalogMobileFloatingActions
+            searchQuery={inputQuery}
+            onSearchChange={setInputQuery}
+            selectedCategory={selectedCategory}
+            onCategoryChange={handleCategoryChange}
+            onSubmitSearch={handleSubmitSearch}
+            onClearSearch={handleClearSearch}
+            isLoading={isLoading}
+          />
+        }
+      />
 
       {/* Main Content Area */}
       <main className="w-full max-w-7xl mx-auto flex-1 flex flex-col gap-5">
         <section className="flex-1 w-full flex flex-col gap-4">
-          {/* Top Search Bar & 3-Categories Dropdown */}
+          {/* Top Search Bar & 3-Categories Dropdown (Desktop & Mobile Top) */}
           <CatalogSearchBar
             searchQuery={inputQuery}
             onSearchChange={setInputQuery}

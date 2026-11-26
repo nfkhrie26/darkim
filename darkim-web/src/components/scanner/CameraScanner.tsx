@@ -13,6 +13,8 @@ interface CameraScannerProps {
   isScanning?: boolean;
   selectedProfile?: HealthProfile;
   onSelectProfile?: (profile: HealthProfile) => void;
+  activeTab?: 'camera' | 'photo';
+  onTabChange?: (tab: 'camera' | 'photo') => void;
 }
 
 // Native Zero-Dependency Web Audio API synthesizer for barcode scan confirmation
@@ -50,8 +52,11 @@ export default function CameraScanner({
   isScanning = false,
   selectedProfile = 'diabetes',
   onSelectProfile,
+  activeTab: controlledActiveTab,
+  onTabChange,
 }: CameraScannerProps) {
-  const [activeTab, setActiveTab] = useState<'camera' | 'photo'>('camera');
+  const [internalActiveTab, setInternalActiveTab] = useState<'camera' | 'photo'>('camera');
+  const activeTab = controlledActiveTab ?? internalActiveTab;
   const [cameraActive, setCameraActive] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
@@ -209,7 +214,11 @@ export default function CameraScanner({
   // Tab change handler
   const handleTabChange = (tab: 'camera' | 'photo') => {
     activeTabRef.current = tab;
-    setActiveTab(tab);
+    if (onTabChange) {
+      onTabChange(tab);
+    } else {
+      setInternalActiveTab(tab);
+    }
 
     if (tab === 'camera') {
       setSelectedPhotoPreview(null);
@@ -221,7 +230,10 @@ export default function CameraScanner({
 
   // Lifecycle control
   useEffect(() => {
+    activeTabRef.current = activeTab;
     if (activeTab === 'camera') {
+      setSelectedPhotoPreview(null);
+      setSelectedPhotoFile(null);
       startCamera();
     } else {
       stopCamera();
@@ -436,34 +448,37 @@ export default function CameraScanner({
     <section className="flex-1 w-full flex flex-col gap-3.5">
       {/* Scanner Box / Viewfinder Container */}
       <div className="w-full bg-white brutal-border brutal-shadow rounded-2xl p-3.5 flex flex-col gap-3">
-        {/* Viewfinder Top Bar / Mode Switcher & Profile Selector */}
+        {/* Viewfinder Top Bar / Mode Switcher */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
-            {/* 1. Camera Tab */}
-            <button
-              type="button"
-              title="Mode Pemindaian Kamera Otomatis"
-              onClick={() => handleTabChange('camera')}
-              className={`px-3 py-1.5 rounded-lg ${
-                activeTab === 'camera' ? 'bg-[#00D084]' : 'bg-white hover:bg-gray-50'
-              } brutal-border-sm brutal-shadow-sm flex items-center gap-1.5 text-xs font-black uppercase text-black brutal-btn cursor-pointer`}
-            >
-              <Icons.Camera className="w-4 h-4 text-black" />
-              <span>Kamera</span>
-            </button>
+            {/* Desktop Only: Camera and Gallery tabs with text */}
+            <div className="hidden md:flex items-center gap-2">
+              {/* 1. Camera Tab */}
+              <button
+                type="button"
+                title="Mode Pemindaian Kamera Otomatis"
+                onClick={() => handleTabChange('camera')}
+                className={`px-3 py-1.5 rounded-lg ${
+                  activeTab === 'camera' ? 'bg-[#00D084]' : 'bg-white hover:bg-gray-50'
+                } brutal-border-sm brutal-shadow-sm flex items-center gap-1.5 text-xs font-black uppercase text-black brutal-btn cursor-pointer`}
+              >
+                <Icons.Camera className="w-4 h-4 text-black" />
+                <span>Kamera</span>
+              </button>
 
-            {/* 2. Photo / Gallery Tab */}
-            <button
-              type="button"
-              title="Unggah Foto dari Galeri"
-              onClick={() => handleTabChange('photo')}
-              className={`px-3 py-1.5 rounded-lg ${
-                activeTab === 'photo' ? 'bg-[#00D084]' : 'bg-white hover:bg-gray-50'
-              } brutal-border-sm brutal-shadow-sm flex items-center gap-1.5 text-xs font-black uppercase text-black brutal-btn cursor-pointer`}
-            >
-              <Icons.Gallery className="w-4 h-4 text-black" />
-              <span>Galeri</span>
-            </button>
+              {/* 2. Photo / Gallery Tab */}
+              <button
+                type="button"
+                title="Unggah Foto dari Galeri"
+                onClick={() => handleTabChange('photo')}
+                className={`px-3 py-1.5 rounded-lg ${
+                  activeTab === 'photo' ? 'bg-[#00D084]' : 'bg-white hover:bg-gray-50'
+                } brutal-border-sm brutal-shadow-sm flex items-center gap-1.5 text-xs font-black uppercase text-black brutal-btn cursor-pointer`}
+              >
+                <Icons.Gallery className="w-4 h-4 text-black" />
+                <span>Galeri</span>
+              </button>
+            </div>
 
             {/* Pause / Resume Auto-Scan Toggle (Only on Camera tab) */}
             {activeTab === 'camera' && cameraActive && (

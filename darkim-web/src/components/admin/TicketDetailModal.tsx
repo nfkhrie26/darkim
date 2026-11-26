@@ -186,18 +186,16 @@ export default function TicketDetailModal({
             <button
               type="button"
               onClick={() => setResolutionMode('OFF')}
-              className={`px-4 py-2 rounded-xl text-xs font-black uppercase brutal-border-sm brutal-shadow-sm brutal-btn cursor-pointer ${
-                resolutionMode === 'OFF' ? 'bg-[#00D084] text-black' : 'bg-white text-black'
-              }`}
+              className={`px-4 py-2 rounded-xl text-xs font-black uppercase brutal-border-sm brutal-shadow-sm brutal-btn cursor-pointer ${resolutionMode === 'OFF' ? 'bg-[#00D084] text-black' : 'bg-white text-black'
+                }`}
             >
               1. Fuzzy Search OpenFoodFacts
             </button>
             <button
               type="button"
               onClick={() => setResolutionMode('MANUAL')}
-              className={`px-4 py-2 rounded-xl text-xs font-black uppercase brutal-border-sm brutal-shadow-sm brutal-btn cursor-pointer ${
-                resolutionMode === 'MANUAL' ? 'bg-[#FFD027] text-black' : 'bg-white text-black'
-              }`}
+              className={`px-4 py-2 rounded-xl text-xs font-black uppercase brutal-border-sm brutal-shadow-sm brutal-btn cursor-pointer ${resolutionMode === 'MANUAL' ? 'bg-[#FFD027] text-black' : 'bg-white text-black'
+                }`}
             >
               2. Input Gizi Manual
             </button>

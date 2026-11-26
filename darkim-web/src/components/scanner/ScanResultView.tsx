@@ -200,59 +200,55 @@ export default function ScanResultView({
       {/* 2. Health Profile Selector */}
       <ProfileSelector selectedProfile={selectedProfile} onSelectProfile={onSelectProfile} />
 
-      {/* 3. Warning Card Section */}
-      <div className="w-full flex flex-col items-start">
-        {/* Header Badge (Left) + Mirrored Red Report Button (Right) */}
+      {/* 3. Warning Card Section (Card Ringkasan) */}
+      <div className="w-full bg-white brutal-border brutal-shadow rounded-2xl p-4 sm:p-5">
+        {/* Header Badge inside Card Ringkasan */}
         <StatusHeaderBar
           badge={evaluation.badge}
           badgeBg={evaluation.badgeBg}
-          onOpenReport={onOpenReport}
         />
 
-        {/* Main Warning & Health Advice Card */}
-        <div className="w-full bg-white brutal-border brutal-shadow rounded-2xl p-4 sm:p-5">
-          {evaluation.isDataIncomplete && (
-            <div className="mb-4 bg-amber-100 brutal-border-sm rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Icons.Alert className="w-5 h-5 text-amber-800 shrink-0" />
-                <p className="text-xs font-bold text-amber-900 leading-snug">
-                  Data gizi produk ini belum lengkap pada database. Bantu komunitas dengan melaporkan atau mengunggah foto tabel gizi!
-                </p>
+        {evaluation.isDataIncomplete && (
+          <div className="mb-4 bg-amber-100 brutal-border-sm rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Icons.Alert className="w-5 h-5 text-amber-800 shrink-0" />
+              <p className="text-xs font-bold text-amber-900 leading-snug">
+                Data gizi produk ini belum lengkap pada database. Bantu komunitas dengan melaporkan atau mengunggah foto tabel gizi!
+              </p>
+            </div>
+            {(onOpenContribute || onOpenReport) && (
+              <button
+                type="button"
+                onClick={onOpenContribute || onOpenReport}
+                className="bg-[#00D084] hover:bg-[#00be78] text-black brutal-border-sm brutal-shadow-sm px-3 py-1.5 rounded-lg text-xs font-black uppercase brutal-btn shrink-0 cursor-pointer"
+              >
+                + Lengkapi Data
+              </button>
+            )}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Left Column: Safe Points (Green Checkmarks) */}
+          <div className="flex flex-col gap-2.5">
+            {evaluation.safePoints.map((point, idx) => (
+              <div key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm font-bold text-black leading-snug">
+                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white shrink-0 mt-0.5">
+                  <Icons.Check className="w-2.5 h-2.5 text-white" />
+                </span>
+                <span>{point}</span>
               </div>
-              {(onOpenContribute || onOpenReport) && (
-                <button
-                  type="button"
-                  onClick={onOpenContribute || onOpenReport}
-                  className="bg-[#00D084] hover:bg-[#00be78] text-black brutal-border-sm brutal-shadow-sm px-3 py-1.5 rounded-lg text-xs font-black uppercase brutal-btn shrink-0 cursor-pointer"
-                >
-                  + Lengkapi Data
-                </button>
-              )}
-            </div>
-          )}
+            ))}
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Left Column: Safe Points (Green Checkmarks) */}
-            <div className="flex flex-col gap-2.5">
-              {evaluation.safePoints.map((point, idx) => (
-                <div key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm font-bold text-black leading-snug">
-                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white shrink-0 mt-0.5">
-                    <Icons.Check className="w-2.5 h-2.5 text-white" />
-                  </span>
-                  <span>{point}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Right Column: Warning Points (Yellow Warning Icon) */}
-            <div className="flex flex-col gap-2.5 md:border-l-2 md:border-black/10 md:pl-4">
-              {evaluation.warningPoints.map((point, idx) => (
-                <div key={idx} className="flex items-start gap-2 text-xs sm:text-sm font-bold text-black leading-snug">
-                  <Icons.Alert className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                  <span>{point}</span>
-                </div>
-              ))}
-            </div>
+          {/* Right Column: Warning Points (Yellow Warning Icon) */}
+          <div className="flex flex-col gap-2.5 md:border-l-2 md:border-black/10 md:pl-4">
+            {evaluation.warningPoints.map((point, idx) => (
+              <div key={idx} className="flex items-start gap-2 text-xs sm:text-sm font-bold text-black leading-snug">
+                <Icons.Alert className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <span>{point}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -263,6 +259,21 @@ export default function ScanResultView({
         tableMode={tableMode}
         onToggleTableMode={onToggleTableMode}
       />
+
+      {/* 5. Tombol Laporkan Ketidaksesuaian Data (Di Bawah Tabel Informasi Gizi) */}
+      {onOpenReport && (
+        <div className="w-full flex items-center justify-center sm:justify-end pt-1">
+          <button
+            type="button"
+            onClick={onOpenReport}
+            title="Produk Tidak Sesuai? Laporkan Pada Kami!"
+            className="w-full sm:w-auto bg-[#FF4D4D] hover:bg-[#e63e3e] text-white brutal-border-sm brutal-shadow-sm rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-wider inline-flex items-center justify-center gap-2 brutal-btn cursor-pointer"
+          >
+            <Icons.Flag className="w-3.5 h-3.5 text-white shrink-0" />
+            <span>Produk Tidak Sesuai? Laporkan</span>
+          </button>
+        </div>
+      )}
     </section>
   );
 }

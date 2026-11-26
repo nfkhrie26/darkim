@@ -7,6 +7,7 @@ import DarkimLogo from '@/components/DarkimLogo';
 import ReportTextModal from '@/components/modals/ReportTextModal';
 import NutritionTable from '@/components/scanner/NutritionTable';
 import StatusHeaderBar from '@/components/scanner/StatusHeaderBar';
+import { Icons } from '@/components/ui/Icons';
 import { HealthProfile, NutritionEvaluation, ProductModel } from '@/types';
 import { evaluateNutrition } from '@/services/nutritionEvaluator';
 
@@ -224,37 +225,34 @@ export default function ProductDetailPage({ params }: PageProps) {
               </button>
             </div>
 
-            {/* Warning & Health Advice Card */}
-            <div className="w-full flex flex-col items-start">
+            {/* Warning & Health Advice Card (Card Ringkasan) */}
+            <div className="w-full bg-white brutal-border brutal-shadow rounded-2xl p-4 sm:p-5">
               <StatusHeaderBar
                 badge={evaluation.badge}
                 badgeBg={evaluation.badgeBg}
-                onOpenReport={() => setReportModalOpen(true)}
               />
 
-              <div className="w-full bg-white brutal-border brutal-shadow rounded-2xl p-4 sm:p-5">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Safe Points */}
-                  <div className="flex flex-col gap-2.5">
-                    {evaluation.safePoints.map((pt, i) => (
-                      <div key={i} className="flex items-start gap-2.5 text-xs sm:text-sm font-bold text-black leading-snug">
-                        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white shrink-0 mt-0.5 text-[10px]">
-                          ✓
-                        </span>
-                        <span>{pt}</span>
-                      </div>
-                    ))}
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Safe Points */}
+                <div className="flex flex-col gap-2.5">
+                  {evaluation.safePoints.map((pt, i) => (
+                    <div key={i} className="flex items-start gap-2.5 text-xs sm:text-sm font-bold text-black leading-snug">
+                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white shrink-0 mt-0.5 text-[10px]">
+                        ✓
+                      </span>
+                      <span>{pt}</span>
+                    </div>
+                  ))}
+                </div>
 
-                  {/* Warning Points */}
-                  <div className="flex flex-col gap-2.5 md:border-l-2 md:border-black/10 md:pl-4">
-                    {evaluation.warningPoints.map((pt, i) => (
-                      <div key={i} className="flex items-start gap-2 text-xs sm:text-sm font-bold text-black leading-snug">
-                        <span className="text-amber-500 text-base shrink-0 leading-none">⚠️</span>
-                        <span>{pt}</span>
-                      </div>
-                    ))}
-                  </div>
+                {/* Warning Points */}
+                <div className="flex flex-col gap-2.5 md:border-l-2 md:border-black/10 md:pl-4">
+                  {evaluation.warningPoints.map((pt, i) => (
+                    <div key={i} className="flex items-start gap-2 text-xs sm:text-sm font-bold text-black leading-snug">
+                      <span className="text-amber-500 text-base shrink-0 leading-none">⚠️</span>
+                      <span>{pt}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -265,6 +263,19 @@ export default function ProductDetailPage({ params }: PageProps) {
               tableMode={tableMode}
               onToggleTableMode={() => setTableMode(tableMode === 'status' ? 'nutrition' : 'status')}
             />
+
+            {/* Tombol Laporkan Ketidaksesuaian Data (Di Bawah Tabel Informasi Gizi) */}
+            <div className="w-full flex items-center justify-center sm:justify-end pt-1">
+              <button
+                type="button"
+                onClick={() => setReportModalOpen(true)}
+                title="Produk Tidak Sesuai? Laporkan Pada Kami!"
+                className="w-full sm:w-auto bg-[#FF4D4D] hover:bg-[#e63e3e] text-white brutal-border-sm brutal-shadow-sm rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-wider inline-flex items-center justify-center gap-2 brutal-btn cursor-pointer"
+              >
+                <Icons.Flag className="w-3.5 h-3.5 text-white shrink-0" />
+                <span>Produk Tidak Sesuai? Laporkan</span>
+              </button>
+            </div>
           </section>
         </main>
       )}
