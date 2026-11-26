@@ -4,6 +4,8 @@ import { HealthProfile, NutritionEvaluation, ProductModel } from '@/types';
 import ProfileSelector from './ProfileSelector';
 import NutritionTable from './NutritionTable';
 import StatusHeaderBar from './StatusHeaderBar';
+import HealthEvaluationPoints from './HealthEvaluationPoints';
+import DarkimIcon from '@/components/DarkimIcon';
 import { Icons } from '@/components/ui/Icons';
 
 interface ScanResultViewProps {
@@ -168,7 +170,7 @@ export default function ScanResultView({
                 className="w-full h-full object-contain rounded-lg"
               />
             ) : (
-              <Icons.Food className="w-7 h-7 text-gray-500" />
+              <DarkimIcon size="sm" showBorder={false} />
             )}
           </div>
 
@@ -228,29 +230,10 @@ export default function ScanResultView({
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Left Column: Safe Points (Green Checkmarks) */}
-          <div className="flex flex-col gap-2.5">
-            {evaluation.safePoints.map((point, idx) => (
-              <div key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm font-bold text-black leading-snug">
-                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white shrink-0 mt-0.5">
-                  <Icons.Check className="w-2.5 h-2.5 text-white" />
-                </span>
-                <span>{point}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Right Column: Warning Points (Yellow Warning Icon) */}
-          <div className="flex flex-col gap-2.5 md:border-l-2 md:border-black/10 md:pl-4">
-            {evaluation.warningPoints.map((point, idx) => (
-              <div key={idx} className="flex items-start gap-2 text-xs sm:text-sm font-bold text-black leading-snug">
-                <Icons.Alert className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                <span>{point}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <HealthEvaluationPoints
+          safePoints={evaluation.safePoints}
+          warningPoints={evaluation.warningPoints}
+        />
       </div>
 
       {/* 4. Nutrition Table (Switchable Mode) */}

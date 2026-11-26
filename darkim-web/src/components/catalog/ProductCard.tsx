@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import DarkimIcon from '@/components/DarkimIcon';
 
 interface ProductCardProps {
   id: string;
@@ -29,11 +30,7 @@ export default function ProductCard({
     <div className="product-item bg-white brutal-border brutal-shadow rounded-2xl p-4 flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5">
       <div>
         {/* Product Thumbnail Box */}
-        <div
-          className={`w-full aspect-[16/9] ${
-            showRealImage ? 'bg-white' : 'bg-[#1a232b]'
-          } brutal-border-sm rounded-xl overflow-hidden mb-3 relative flex items-center justify-center`}
-        >
+        <div className="w-full aspect-[16/9] bg-white brutal-border-sm rounded-xl overflow-hidden mb-3 relative flex items-center justify-center">
           {showRealImage ? (
             <img
               src={image as string}
@@ -43,18 +40,12 @@ export default function ProductCard({
               className="w-full h-full object-contain p-2 bg-white"
             />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-[#2a3744] to-[#121921] flex flex-col items-center justify-center p-3 relative select-none">
-              <span className="text-xs font-black uppercase tracking-widest text-amber-300">DARKIM</span>
-              <span className="text-[11px] font-bold text-white/90 text-center leading-tight mt-1 line-clamp-1">
-                {name}
+            <div className="w-full h-full bg-gradient-to-b from-[#F4F9F6] to-[#E6F1EA] flex flex-col items-center justify-center p-3 relative select-none">
+              {/* DARKIM "IM" Green Icon Badge with Underline Bar */}
+              <DarkimIcon size="sm" className="mb-1.5" />
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                Foto Belum Tersedia
               </span>
-              <div className="absolute bottom-1.5 inset-x-4 h-3 bg-white/10 rounded flex items-center justify-center gap-0.5 opacity-60">
-                <div className="w-1 h-2 bg-white"></div>
-                <div className="w-0.5 h-2 bg-white"></div>
-                <div className="w-1.5 h-2 bg-white"></div>
-                <div className="w-0.5 h-2 bg-white"></div>
-                <div className="w-1 h-2 bg-white"></div>
-              </div>
             </div>
           )}
         </div>

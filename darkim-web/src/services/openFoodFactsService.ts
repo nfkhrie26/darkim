@@ -220,11 +220,19 @@ export class OpenFoodFactsService {
       const filledCount = evaluatedFields.filter((v) => v !== null).length;
       const nutritionCompletenessScore = Math.round((filledCount / evaluatedFields.length) * 100);
 
+      const rawTags: string[] = Array.isArray(p.categories_tags) ? p.categories_tags : [];
+      const productName = p.product_name_id || p.product_name || p.product_name_en || 'Produk Tanpa Nama';
+      const { category: resolvedCategory } = this.resolveIndonesianCategory(
+        productName,
+        rawTags,
+        typeof p.categories === 'string' ? p.categories : ''
+      );
+
       return {
         barcode: cleanBarcode,
-        name: p.product_name_id || p.product_name || p.product_name_en || 'Produk Tanpa Nama',
+        name: productName,
         brand: p.brands || 'Tanpa Brand',
-        category: p.categories_tags?.[0]?.replace(/^id:|^en:/, '') || p.categories || 'Makanan & Minuman',
+        category: resolvedCategory,
         servingSize: servingSizeStr,
         nutritionBasis,
         energy,
@@ -254,6 +262,111 @@ export class OpenFoodFactsService {
   }
 
   /**
+   * Intelligently classify product category into clean Indonesian labels
+   * and accurately detect whether it is a beverage (Minuman) or food (Makanan).
+   */
+  static resolveIndonesianCategory(
+    name: string,
+    rawTags: string[] = [],
+    rawCategoriesStr: string = ''
+  ): {
+    category: string;
+    isBeverage: boolean;
+  } {
+    const cleanName = (name || '').trim().toLowerCase();
+    const categoriesLower = (rawCategoriesStr || '').toLowerCase();
+    const tagString = rawTags.join(' ').toLowerCase();
+    const combined = `${cleanName} ${categoriesLower} ${tagString}`;
+
+    // Obvious food keyword check (overrides accidental beverage tags, e.g. plant-based-foods-and-beverages)
+    const isObviousFood =
+      /\b(mi|mie|bihun|kwetiau|ramen|noodle|pasta|spaghetti|makaroni|biskuit|biscuit|cookie|wafer|keripik|kripik|kerupuk|chips|crisps|snack|mentega|butter|keju|cheese|margarine|cokelat|chocolate|permen|candy|saus|sauce|kecap|sambal|bumbu|seasoning|minyak|oil|beras|rice|roti|bread|cake|kue|pie|sereal|cereal|oat|granola|daging|meat|sosis|sausage|nugget|bakso|ikan|fish|seafood)\b/i.test(
+        cleanName
+      ) ||
+      rawTags.some((t) =>
+        /noodles|pastas|biscuits|cakes|breads|salty-snacks|sweet-snacks|appetizers|crisps|chips|spreads|butters|cheeses|fats|vegetable-oils|condiments|sauces|cereals|meats|seafood/i.test(
+          t
+        )
+      );
+
+    // True beverage check (avoids 'plant-based-foods-and-beverages' false positive)
+    const hasBeverageTag = rawTags.some((t) => {
+      const tag = t.toLowerCase();
+      if (tag === 'en:plant-based-foods-and-beverages' || tag === 'plant-based-foods-and-beverages') {
+        return false;
+      }
+      return (
+        tag === 'en:beverages' ||
+        tag.startsWith('en:beverages') ||
+        tag === 'en:waters' ||
+        tag.includes('waters') ||
+        tag.includes('soft-drinks') ||
+        tag.includes('sodas') ||
+        tag.includes('teas') ||
+        tag.includes('coffees') ||
+        tag.includes('fruit-juices') ||
+        tag.includes('plant-milks') ||
+        tag.includes('dairy-drinks')
+      );
+    });
+
+    const isBeverageByName =
+      /^(air mineral|teh|kopi|jus|sirup|susu|minuman|soda|beer|bir)\b/i.test(cleanName) ||
+      /\b(mineral water|air minum|drinking water|iced tea|coffee drink|sparkling water|energy drink|soft drink|syrup)\b/i.test(
+        cleanName
+      );
+
+    const isBeverage = (hasBeverageTag || isBeverageByName) && !isObviousFood;
+
+    let category = 'Makanan Kemasan';
+
+    if (isBeverage) {
+      if (/water|air mineral|aqua|le minerale|air minum/i.test(combined)) {
+        category = 'Air Mineral';
+      } else if (/tea|teh/i.test(combined)) {
+        category = 'Minuman Teh';
+      } else if (/coffee|kopi/i.test(combined)) {
+        category = 'Minuman Kopi';
+      } else if (/milk|susu|oat milk|soy milk|almond milk/i.test(combined)) {
+        category = 'Susu & Minuman Susu';
+      } else if (/juice|jus|sari buah/i.test(combined)) {
+        category = 'Jus Buah';
+      } else if (/soda|carbonated|soft drink|cola/i.test(combined)) {
+        category = 'Minuman Bersoda';
+      } else {
+        category = 'Minuman';
+      }
+    } else {
+      if (/noodle|mie|mi |bihun|kwetiau|pasta|spaghetti|ramen/i.test(combined)) {
+        category = 'Mie & Pasta';
+      } else if (/biscuit|biskuit|cookie|wafer|cake|kue|pie|roti|bread/i.test(combined)) {
+        category = 'Biskuit & Kue';
+      } else if (/snack|chips|crisps|keripik|kripik|kerupuk|ciki|popcorn/i.test(combined)) {
+        category = 'Camilan / Makanan Ringan';
+      } else if (/chocolate|cokelat|candy|permen|confectionery/i.test(combined)) {
+        category = 'Cokelat & Permen';
+      } else if (/butter|mentega|cheese|keju|margarine|dairy|dairies|laitier|beurre/i.test(combined)) {
+        category = 'Olahan Susu & Mentega';
+      } else if (/oil|minyak|sauce|saus|kecap|sambal|condiment|seasoning|bumbu/i.test(combined)) {
+        category = 'Minyak & Bumbu Dapur';
+      } else if (/cereal|sereal|oat|granola|rice|beras/i.test(combined)) {
+        category = 'Sereal & Biji-bijian';
+      } else if (/meat|daging|sosis|sausage|seafood|ikan|nugget/i.test(combined)) {
+        category = 'Daging & Olahan';
+      } else {
+        const cleanTag = rawTags[rawTags.length - 1]?.replace(/^[a-z]{2}:/i, '').replace(/-/g, ' ');
+        if (cleanTag && cleanTag !== 'plant based foods and beverages' && cleanTag.length < 24) {
+          category = cleanTag.charAt(0).toUpperCase() + cleanTag.slice(1);
+        } else {
+          category = 'Makanan Kemasan';
+        }
+      }
+    }
+
+    return { category, isBeverage };
+  }
+
+  /**
    * Normalize raw OpenFoodFacts search hit/product into a clean CatalogProductItem
    */
   private static normalizeCatalogItem(raw: any): CatalogProductItem {
@@ -267,18 +380,18 @@ export class OpenFoodFactsService {
       : Array.isArray(raw?.categories)
       ? raw.categories
       : [];
-    const isBeverage = tags.some((t) => /beverage|drink|milk|tea|coffee|juice|water|soda/i.test(t));
-    const readableTag = tags[tags.length - 1]?.replace(/^[a-z]{2}:/i, '').replace(/-/g, ' ');
-    const fallbackCategory = isBeverage
-      ? 'Minuman'
-      : readableTag || (typeof raw?.categories === 'string' ? raw.categories.split(',')[0] : '') || 'Makanan & Minuman';
+
+    const name = raw?.product_name_id || raw?.product_name || raw?.product_name_en || 'Produk Tanpa Nama';
+    const rawCatStr = typeof raw?.categories === 'string' ? raw.categories : '';
+
+    const { category } = this.resolveIndonesianCategory(name, tags, rawCatStr);
 
     return {
       id: barcode,
       barcode,
-      name: raw?.product_name_id || raw?.product_name || raw?.product_name_en || 'Produk Tanpa Nama',
+      name,
       brand: rawBrands || 'Tanpa Brand',
-      category: fallbackCategory,
+      category,
       image: raw?.image_front_url || raw?.image_front_small_url || raw?.image_url || null,
     };
   }
@@ -372,9 +485,24 @@ export class OpenFoodFactsService {
       const data = await res.json();
 
       const rawHits: any[] = Array.isArray(data?.hits) ? data.hits : [];
-      const products = rawHits
+      let products = rawHits
         .map((item) => this.normalizeCatalogItem(item))
         .filter((p) => Boolean(p.barcode));
+
+      // Strictly ensure category separation matches true beverage/food classification
+      if (category === 'minuman') {
+        products = products.filter((p) => {
+          const hit = rawHits.find((h) => String(h?.code).trim() === p.barcode);
+          const tags = Array.isArray(hit?.categories_tags) ? hit.categories_tags : [];
+          return this.resolveIndonesianCategory(p.name, tags, typeof hit?.categories === 'string' ? hit.categories : '').isBeverage;
+        });
+      } else if (category === 'makanan') {
+        products = products.filter((p) => {
+          const hit = rawHits.find((h) => String(h?.code).trim() === p.barcode);
+          const tags = Array.isArray(hit?.categories_tags) ? hit.categories_tags : [];
+          return !this.resolveIndonesianCategory(p.name, tags, typeof hit?.categories === 'string' ? hit.categories : '').isBeverage;
+        });
+      }
 
       const totalCount = Number(data?.count || products.length);
       const totalPages = Math.min(1000, Math.max(1, Math.ceil(totalCount / pageSize)));

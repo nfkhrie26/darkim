@@ -40,11 +40,13 @@ export async function GET(req: NextRequest) {
     const localRows = await ProductRepository.getAll(query || undefined);
     const filtered = localRows.filter((item) => {
       if (category === 'all') return true;
-      const catLower = (item.category || '').toLowerCase();
-      if (category === 'minuman') {
-        return /minuman|beverage|susu|teh|kopi|drink/i.test(catLower);
-      }
-      return !/minuman|beverage|drink/i.test(catLower);
+      const { isBeverage } = OpenFoodFactsService.resolveIndonesianCategory(
+        item.name || '',
+        [],
+        item.category || ''
+      );
+      if (category === 'minuman') return isBeverage;
+      return !isBeverage;
     });
 
     const totalCount = filtered.length;

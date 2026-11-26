@@ -7,6 +7,8 @@ import DarkimLogo from '@/components/DarkimLogo';
 import ReportProductModal from '@/components/modals/ReportProductModal';
 import NutritionTable from '@/components/scanner/NutritionTable';
 import StatusHeaderBar from '@/components/scanner/StatusHeaderBar';
+import HealthEvaluationPoints from '@/components/scanner/HealthEvaluationPoints';
+import ProductHeroShowcase from '@/components/product/ProductHeroShowcase';
 import { Icons } from '@/components/ui/Icons';
 import { HealthProfile, NutritionEvaluation, ProductModel } from '@/types';
 import { evaluateNutrition } from '@/services/nutritionEvaluator';
@@ -87,9 +89,6 @@ export default function ProductDetailPage({ params }: PageProps) {
     }
   };
 
-  const words = (product?.name || 'Produk Makanan').split(' ');
-  const initials = (words[0]?.[0] || 'D') + (words[1]?.[0] || 'K');
-
   return (
     <div className="min-h-screen flex flex-col px-4 sm:px-6 lg:px-8 pt-2 sm:pt-3 lg:pt-3.5 pb-8">
       {/* Top Navigation Bar: Back Button & Always Floating DARKIM Branding */}
@@ -123,66 +122,12 @@ export default function ProductDetailPage({ params }: PageProps) {
         </div>
       ) : (
         <main className="w-full max-w-7xl mx-auto flex-1 flex flex-col lg:flex-row gap-6 items-start">
-          {/* Left Column: Product Image Showcase & Quick Actions (Sticky on Desktop) */}
-          <section className="w-full lg:w-[420px] xl:w-[460px] shrink-0 flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
-            {/* Main Hero Image Card */}
-            <div className="w-full bg-white brutal-border brutal-shadow rounded-2xl p-4 flex flex-col">
-              <div
-                className={`w-full aspect-[4/3] ${
-                  product.image && !heroImgError
-                    ? 'bg-white'
-                    : 'bg-gradient-to-br from-[#1d2731] to-[#0f151c] p-6'
-                } brutal-border-sm rounded-xl overflow-hidden flex flex-col items-center justify-center text-center relative select-none`}
-              >
-                {product.image && !heroImgError ? (
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    onError={() => setHeroImgError(true)}
-                    className="w-full h-full object-contain p-4 pb-12"
-                  />
-                ) : (
-                  <>
-                    {/* Brand Initial Badge */}
-                    <div className="w-14 h-14 rounded-full border-2 border-amber-300 flex items-center justify-center mb-3 shadow-md bg-black/40">
-                      <span className="text-lg font-black text-amber-300">{initials}</span>
-                    </div>
-                    <span className="text-base sm:text-lg font-black text-white leading-tight uppercase tracking-tight line-clamp-1">
-                      {product.name}
-                    </span>
-                    <span className="text-xs font-bold text-sky-300 tracking-wider mt-1 uppercase">
-                      {product.category}
-                    </span>
-                  </>
-                )}
-
-                {/* Decorative Barcode */}
-                <div className="absolute bottom-3 inset-x-8 bg-white/95 brutal-border-sm rounded px-3 py-1 flex items-center justify-center gap-1 shadow">
-                  <div className="w-1 h-4 bg-black"></div>
-                  <div className="w-2 h-4 bg-black"></div>
-                  <div className="w-0.5 h-4 bg-black"></div>
-                  <div className="w-1.5 h-4 bg-black"></div>
-                  <div className="w-3 h-4 bg-black"></div>
-                  <div className="w-1 h-4 bg-black"></div>
-                  <div className="w-2 h-4 bg-black"></div>
-                  <span className="text-[10px] font-mono font-bold text-black ml-2 tracking-widest">
-                    {product.barcode}
-                  </span>
-                </div>
-              </div>
-
-              {/* Product Attributes Pill Bar */}
-              <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t-2 border-black/10 text-xs font-bold text-gray-700">
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-[#00D084]"></span>
-                  Barcode Terverifikasi
-                </span>
-                <span className="bg-gray-100 brutal-border-sm px-2.5 py-0.5 rounded-md text-[11px] font-black uppercase text-black">
-                  {product.category}
-                </span>
-              </div>
-            </div>
-          </section>
+          {/* Left Column: Modular Product Image Showcase (Sticky on Desktop) */}
+          <ProductHeroShowcase
+            product={product}
+            heroImgError={heroImgError}
+            onImgError={() => setHeroImgError(true)}
+          />
 
           {/* Right Column: Nutrition Table, Health Analysis & Disease Filters (Scrollable within bounds below header) */}
           <section className="flex-1 w-full flex flex-col gap-4 lg:max-h-[calc(100vh-84px)] lg:overflow-y-auto lg:pr-3 lg:pb-8 custom-scrollbar">
@@ -230,29 +175,10 @@ export default function ProductDetailPage({ params }: PageProps) {
                 badgeBg={evaluation.badgeBg}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Safe Points */}
-                <div className="flex flex-col gap-2.5">
-                  {evaluation.safePoints.map((pt, i) => (
-                    <div key={i} className="flex items-start gap-2.5 text-xs sm:text-sm font-bold text-black leading-snug">
-                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white shrink-0 mt-0.5 text-[10px]">
-                        ✓
-                      </span>
-                      <span>{pt}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Warning Points */}
-                <div className="flex flex-col gap-2.5 md:border-l-2 md:border-black/10 md:pl-4">
-                  {evaluation.warningPoints.map((pt, i) => (
-                    <div key={i} className="flex items-start gap-2 text-xs sm:text-sm font-bold text-black leading-snug">
-                      <span className="text-amber-500 text-base shrink-0 leading-none">⚠️</span>
-                      <span>{pt}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <HealthEvaluationPoints
+                safePoints={evaluation.safePoints}
+                warningPoints={evaluation.warningPoints}
+              />
             </div>
 
             {/* Nutrition Table (Switchable Mode) */}

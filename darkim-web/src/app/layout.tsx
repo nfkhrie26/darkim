@@ -12,6 +12,12 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: 'DARKIM - Pindai Barcode & Evaluasi Nilai Gizi',
   description: 'Sistem pendukung keputusan evaluasi nilai gizi pangan untuk profil Hipertensi dan Diabetes Melitus.',
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+  },
 };
 
 export default function RootLayout({

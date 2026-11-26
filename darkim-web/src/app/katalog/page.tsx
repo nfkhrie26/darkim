@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/Header';
 import Toast from '@/components/Toast';
 import CatalogSearchBar from '@/components/catalog/CatalogSearchBar';
-import CatalogMobileFloatingActions from '@/components/catalog/CatalogMobileFloatingActions';
+import CatalogFloatingActions from '@/components/catalog/CatalogFloatingActions';
 import ProductCard from '@/components/catalog/ProductCard';
 import CatalogPagination from '@/components/catalog/CatalogPagination';
 import { Icons } from '@/components/ui/Icons';
@@ -108,10 +108,10 @@ export default function CatalogPage() {
 
   return (
     <div className="min-h-screen flex flex-col p-4 sm:p-6 lg:p-8 pb-24 md:pb-8 bg-[#E6F1EA]">
-      {/* Sticky Floating Header with perfectly aligned Top-Right Mobile Action Icons */}
+      {/* Sticky Floating Header with Top-Right Floating Search & Category Filter Actions */}
       <Header
         rightContent={
-          <CatalogMobileFloatingActions
+          <CatalogFloatingActions
             searchQuery={inputQuery}
             onSearchChange={setInputQuery}
             selectedCategory={selectedCategory}
