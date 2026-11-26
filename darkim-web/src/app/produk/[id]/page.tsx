@@ -4,7 +4,7 @@ import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import Toast from '@/components/Toast';
 import DarkimLogo from '@/components/DarkimLogo';
-import ReportTextModal from '@/components/modals/ReportTextModal';
+import ReportProductModal from '@/components/modals/ReportProductModal';
 import NutritionTable from '@/components/scanner/NutritionTable';
 import StatusHeaderBar from '@/components/scanner/StatusHeaderBar';
 import { Icons } from '@/components/ui/Icons';
@@ -77,11 +77,9 @@ export default function ProductDetailPage({ params }: PageProps) {
   // When profile toggles
   const handleProfileToggle = (newProfile: HealthProfile) => {
     if (newProfile === selectedProfile) {
-      showToast(`Filter ${newProfile.toUpperCase()} sedang aktif.`);
       return;
     }
     setSelectedProfile(newProfile);
-    showToast(`Filter ${newProfile === 'diabetes' ? 'DIABETES MELITUS' : 'HIPERTENSI'} aktif.`);
 
     if (product) {
       const newEval = evaluateNutrition(product, newProfile);
@@ -93,9 +91,9 @@ export default function ProductDetailPage({ params }: PageProps) {
   const initials = (words[0]?.[0] || 'D') + (words[1]?.[0] || 'K');
 
   return (
-    <div className="min-h-screen flex flex-col p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen flex flex-col px-4 sm:px-6 lg:px-8 pt-2 sm:pt-3 lg:pt-3.5 pb-8">
       {/* Top Navigation Bar: Back Button & Always Floating DARKIM Branding */}
-      <header className="sticky top-3 sm:top-4 z-40 w-full max-w-7xl mx-auto mb-6 flex items-center justify-between gap-3 pointer-events-none">
+      <header className="sticky top-2 sm:top-2.5 z-40 w-full max-w-7xl mx-auto mb-3 sm:mb-4 flex items-center justify-between gap-3 pointer-events-none">
         {/* Back Button (Top-Left) */}
         <Link
           href="/katalog"
@@ -125,8 +123,8 @@ export default function ProductDetailPage({ params }: PageProps) {
         </div>
       ) : (
         <main className="w-full max-w-7xl mx-auto flex-1 flex flex-col lg:flex-row gap-6 items-start">
-          {/* Left Column: Product Image Showcase & Quick Actions */}
-          <section className="w-full lg:w-[460px] shrink-0 flex flex-col gap-4">
+          {/* Left Column: Product Image Showcase & Quick Actions (Sticky on Desktop) */}
+          <section className="w-full lg:w-[420px] xl:w-[460px] shrink-0 flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
             {/* Main Hero Image Card */}
             <div className="w-full bg-white brutal-border brutal-shadow rounded-2xl p-4 flex flex-col">
               <div
@@ -186,8 +184,8 @@ export default function ProductDetailPage({ params }: PageProps) {
             </div>
           </section>
 
-          {/* Right Column: Nutrition Table, Health Analysis & Disease Filters */}
-          <section className="flex-1 w-full flex flex-col gap-4">
+          {/* Right Column: Nutrition Table, Health Analysis & Disease Filters (Scrollable within bounds below header) */}
+          <section className="flex-1 w-full flex flex-col gap-4 lg:max-h-[calc(100vh-84px)] lg:overflow-y-auto lg:pr-3 lg:pb-8 custom-scrollbar">
             {/* Product Title & Brand Meta Box */}
             <div className="bg-white brutal-border brutal-shadow rounded-2xl p-4 sm:p-5 flex flex-col gap-1">
               <span className="text-xs font-black uppercase tracking-wider text-gray-500">
@@ -280,11 +278,13 @@ export default function ProductDetailPage({ params }: PageProps) {
         </main>
       )}
 
-      {/* Report Modal */}
-      <ReportTextModal
+      {/* Report Modal with Choice Options (Data Gizi vs Kendala Lainnya) */}
+      <ReportProductModal
         isOpen={reportModalOpen}
         barcode={product?.barcode || targetId}
         productName={product?.name}
+        brand={product?.brand}
+        category={product?.category}
         onClose={() => setReportModalOpen(false)}
         onSubmitSuccess={showToast}
       />

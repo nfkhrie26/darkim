@@ -6,7 +6,7 @@ import Toast from '@/components/Toast';
 import CameraScanner from '@/components/scanner/CameraScanner';
 import ScannerMobileHeaderActions from '@/components/scanner/ScannerMobileHeaderActions';
 import ScanResultView from '@/components/scanner/ScanResultView';
-import ReportTextModal from '@/components/modals/ReportTextModal';
+import ReportProductModal from '@/components/modals/ReportProductModal';
 import ContributePhotoModal from '@/components/modals/ContributePhotoModal';
 import { detectBarcodeInBrowser } from '@/lib/browserBarcodeDetector';
 import { HealthProfile, NutritionEvaluation, ProductModel, ScanApiResponse } from '@/types';
@@ -284,10 +284,12 @@ export default function PindaiPage() {
       </main>
 
       {/* Modals & Overlays */}
-      <ReportTextModal
+      <ReportProductModal
         isOpen={reportModalOpen}
         barcode={fallbackBarcode}
         productName={product?.name}
+        brand={product?.brand}
+        category={product?.category}
         onClose={() => setReportModalOpen(false)}
         onSubmitSuccess={showToast}
       />
@@ -295,6 +297,9 @@ export default function PindaiPage() {
       <ContributePhotoModal
         isOpen={contributeModalOpen}
         barcode={fallbackBarcode}
+        productName={product?.name}
+        brand={product?.brand}
+        category={product?.category}
         onClose={() => setContributeModalOpen(false)}
         onSubmitSuccess={showToast}
       />

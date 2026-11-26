@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useRef, useEffect } from 'react';
 import { Icons } from '@/components/ui/Icons';
 
 interface CatalogSearchBarProps {
@@ -12,6 +13,12 @@ interface CatalogSearchBarProps {
   isLoading?: boolean;
 }
 
+const CATEGORY_OPTIONS = [
+  { value: 'all', label: 'Semua Kategori', shortLabel: 'Semua Kategori' },
+  { value: 'makanan', label: 'Makanan', shortLabel: 'Makanan' },
+  { value: 'minuman', label: 'Minuman', shortLabel: 'Minuman' },
+] as const;
+
 export default function CatalogSearchBar({
   searchQuery,
   onSearchChange,
@@ -21,6 +28,39 @@ export default function CatalogSearchBar({
   onClearSearch,
   isLoading = false,
 }: CatalogSearchBarProps) {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    if (dropdownOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [dropdownOpen]);
+
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDropdownOpen(false);
+    };
+    if (dropdownOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [dropdownOpen]);
+
+  const currentCategory =
+    CATEGORY_OPTIONS.find((c) => c.value === selectedCategory) || CATEGORY_OPTIONS[0];
+
   return (
     <div className="w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
       {/* Search Input Group */}
@@ -57,37 +97,81 @@ export default function CatalogSearchBar({
           disabled={isLoading}
           onClick={onSubmitSearch}
           title="Cari Produk"
-          className={`bg-[#FFD027] brutal-border brutal-shadow rounded-xl px-4 py-2.5 flex items-center justify-center brutal-btn cursor-pointer shrink-0 ${
-            isLoading ? 'opacity-70 animate-pulse' : ''
-          }`}
+          className={`bg-[#FFD027] brutal-border brutal-shadow rounded-xl px-4 py-2.5 flex items-center justify-center brutal-btn cursor-pointer shrink-0 ${isLoading ? 'opacity-70 animate-pulse' : ''
+            }`}
         >
           <Icons.Search className="w-5 h-5 text-black" />
         </button>
       </div>
 
-      {/* 3 Categories Filter Dropdown */}
-      <div className="relative shrink-0">
-        <div className="bg-white brutal-border brutal-shadow rounded-xl px-3 py-1 flex items-center gap-2">
-          <select
-            value={selectedCategory}
-            disabled={isLoading}
-            onChange={(e) => onCategoryChange(e.target.value)}
-            className="bg-transparent font-black text-xs sm:text-sm uppercase tracking-wider text-black focus:outline-none py-1.5 cursor-pointer"
-          >
-            <option value="all">ALL CATEGORIES</option>
-            <option value="makanan">MAKANAN</option>
-            <option value="minuman">MINUMAN</option>
-          </select>
+      {/* Custom Neo-Brutalist Category Dropdown Selector */}
+      <div className="relative shrink-0" ref={dropdownRef}>
+        <button
+          type="button"
+          disabled={isLoading}
+          onClick={() => setDropdownOpen((prev) => !prev)}
+          className={`w-full sm:w-auto bg-white brutal-border brutal-shadow rounded-xl px-4 py-2.5 flex items-center justify-between gap-3 text-xs sm:text-sm font-black uppercase tracking-wider text-black brutal-btn cursor-pointer whitespace-nowrap transition-all ${dropdownOpen ? 'ring-2 ring-black' : ''
+            }`}
+          title="Pilih Kategori Produk"
+        >
+          <span className="flex items-center gap-2">
+            <svg
+              className="w-4 h-4 text-black shrink-0 pointer-events-none"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              viewBox="0 0 24 24"
+            >
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+            </svg>
+            <span>{currentCategory.shortLabel}</span>
+          </span>
           <svg
-            className="w-4 h-4 text-black shrink-0 pointer-events-none"
+            className={`w-4 h-4 text-black shrink-0 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''
+              }`}
             fill="none"
             stroke="currentColor"
-            strokeWidth="2.5"
+            strokeWidth="3"
             viewBox="0 0 24 24"
           >
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
           </svg>
-        </div>
+        </button>
+
+        {/* Floating Category Menu */}
+        {dropdownOpen && (
+          <div className="absolute right-0 top-full mt-2 w-full sm:w-56 z-50 bg-white brutal-border-lg brutal-shadow-lg rounded-2xl p-2 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-2.5 py-1 mb-1 border-b-2 border-black/10 flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">
+                Pilih Kategori
+              </span>
+              <span className="text-[10px] font-mono font-black bg-[#FFD027] brutal-border-sm px-1.5 py-0.5 rounded text-black">
+                {CATEGORY_OPTIONS.length} PILIHAN
+              </span>
+            </div>
+
+            {CATEGORY_OPTIONS.map((cat) => {
+              const isSelected = selectedCategory === cat.value;
+              return (
+                <button
+                  key={cat.value}
+                  type="button"
+                  onClick={() => {
+                    onCategoryChange(cat.value);
+                    setDropdownOpen(false);
+                  }}
+                  className={`w-full py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-between brutal-btn cursor-pointer transition-all ${isSelected
+                      ? 'bg-[#00D084] text-black brutal-border-sm brutal-shadow-sm'
+                      : 'bg-white hover:bg-gray-100 text-black'
+                    }`}
+                >
+                  <span>{cat.label}</span>
+                  {isSelected && <Icons.Check className="w-4 h-4 text-black shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

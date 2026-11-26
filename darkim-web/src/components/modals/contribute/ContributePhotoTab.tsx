@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Icons } from '@/components/ui/Icons';
 import CategorySelect from '@/components/ui/CategorySelect';
 import ServingSizeInput from '@/components/ui/ServingSizeInput';
@@ -9,6 +9,9 @@ import { getPer100ConversionFactor } from '@/lib/nutritionConversion';
 
 interface ContributePhotoTabProps {
   barcode: string;
+  initialName?: string;
+  initialBrand?: string;
+  initialCategory?: string;
   onSuccess: (msg: string) => void;
   onClose: () => void;
 }
@@ -26,6 +29,9 @@ const EMPTY_NUTRITION: NutritionValues = {
 
 export default function ContributePhotoTab({
   barcode,
+  initialName,
+  initialBrand,
+  initialCategory,
   onSuccess,
   onClose,
 }: ContributePhotoTabProps) {
@@ -39,13 +45,20 @@ export default function ContributePhotoTab({
   const [photoDescription, setPhotoDescription] = useState('');
 
   // Step 2 required fields (when nutrition photo is not uploaded)
-  const [name, setName] = useState('');
-  const [brand, setBrand] = useState('');
-  const [category, setCategory] = useState('');
+  const [name, setName] = useState(initialName || '');
+  const [brand, setBrand] = useState(initialBrand || '');
+  const [category, setCategory] = useState(initialCategory || '');
   const [servingSize, setServingSize] = useState('100 ml');
   const [nutrition, setNutrition] = useState<NutritionValues>(EMPTY_NUTRITION);
 
   const [loading, setLoading] = useState(false);
+
+  // Sync initial props if they become available
+  useEffect(() => {
+    if (initialName && !name) setName(initialName);
+    if (initialBrand && !brand) setBrand(initialBrand);
+    if (initialCategory && !category) setCategory(initialCategory);
+  }, [initialName, initialBrand, initialCategory]);
 
   const updateNutrition = (field: keyof NutritionValues, value: string) => {
     setNutrition((prev) => ({ ...prev, [field]: value }));

@@ -6,6 +6,9 @@ import ContributePhotoTab from './contribute/ContributePhotoTab';
 interface ContributePhotoModalProps {
   isOpen: boolean;
   barcode: string;
+  productName?: string;
+  brand?: string;
+  category?: string;
   onClose: () => void;
   onSubmitSuccess: (msg: string) => void;
 }
@@ -13,6 +16,9 @@ interface ContributePhotoModalProps {
 export default function ContributePhotoModal({
   isOpen,
   barcode,
+  productName,
+  brand,
+  category,
   onClose,
   onSubmitSuccess,
 }: ContributePhotoModalProps) {
@@ -44,16 +50,28 @@ export default function ContributePhotoModal({
           <p className="text-xs font-semibold text-gray-600 mt-0.5 leading-relaxed">
             Unggah foto produk kemasan depan. Jika foto tabel informasi gizi tidak tersedia, Anda dapat menginput nilai gizinya pada langkah berikutnya.
           </p>
-          {barcode && (
-            <p className="text-xs font-mono font-bold text-gray-700 mt-2">
-              Barcode: <span className="bg-[#FFD027] brutal-border-sm px-2 py-0.5 rounded-md text-black font-mono">{barcode}</span>
-            </p>
+          {(barcode || productName) && (
+            <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-gray-700 mt-2">
+              {productName && (
+                <span className="bg-[#E6F1EA] brutal-border-sm px-2 py-0.5 rounded text-black font-black">
+                  {productName}
+                </span>
+              )}
+              {barcode && (
+                <span className="bg-[#FFD027] brutal-border-sm px-2 py-0.5 rounded-md text-black font-mono">
+                  {barcode}
+                </span>
+              )}
+            </div>
           )}
         </div>
 
         {/* Pure Linear Wizard (Photo Upload -> Conditional Nutrition Form) */}
         <ContributePhotoTab
           barcode={barcode}
+          initialName={productName}
+          initialBrand={brand}
+          initialCategory={category}
           onSuccess={onSubmitSuccess}
           onClose={onClose}
         />

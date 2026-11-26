@@ -97,8 +97,6 @@ export default function CatalogPage() {
   const handleCategoryChange = (cat: string) => {
     setSelectedCategory(cat);
     setCurrentPage(1);
-    const label = cat === 'all' ? 'SEMUA KATEGORI' : cat.toUpperCase();
-    showToast(`Kategori aktif: ${label}`);
   };
 
   const handlePageChange = (page: number) => {

@@ -48,11 +48,6 @@ export default function HeroSection() {
                 <span>Jelajahi Katalog</span>
               </Link>
             </div>
-
-            <div className="text-xs text-gray-500 font-medium flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#00D084] border border-black shrink-0"></span>
-              <span>Sesuai standar Informasi Nilai Gizi BPOM & anjuran Kemenkes RI (G4-G1-L5).</span>
-            </div>
           </div>
 
           {/* Desktop Only: Right Column Scanner Demo inside Grid */}

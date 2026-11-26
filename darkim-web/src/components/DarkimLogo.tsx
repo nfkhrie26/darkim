@@ -11,7 +11,7 @@ export default function DarkimLogo({ title = 'DARKIM Beranda' }: DarkimLogoProps
   return (
     <Link
       href="/"
-      className="bg-white brutal-border brutal-shadow rounded-xl px-4 h-12 inline-flex items-center gap-1 hover:-translate-y-0.5 transition-transform cursor-pointer"
+      className="bg-white brutal-border brutal-shadow rounded-xl px-4 h-12 inline-flex items-center gap-1 hover:-translate-y-0.5 transition-transform cursor-pointer w-fit shrink-0"
       title={title}
     >
       <span className="text-2xl sm:text-3xl font-black tracking-tight text-black leading-none">DARK</span>
