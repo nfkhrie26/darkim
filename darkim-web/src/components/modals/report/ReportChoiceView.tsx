@@ -63,7 +63,7 @@ export default function ReportChoiceView({
               Data Gizi Tidak Lengkap atau Tidak Akurat
             </h4>
             <p className="text-xs text-gray-500 font-medium mt-0.5">
-              Koreksi atau lengkapi nilai gizi dengan panduan foto kemasan.
+              Koreksi data dengan melampirkan foto tabel informasi nilai gizi (foto depan opsional).
             </p>
           </div>
         </button>

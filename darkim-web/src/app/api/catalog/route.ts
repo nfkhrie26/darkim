@@ -40,13 +40,21 @@ export async function GET(req: NextRequest) {
     const localRows = await ProductRepository.getAll(query || undefined);
     const filtered = localRows.filter((item) => {
       if (category === 'all') return true;
-      const { isBeverage } = OpenFoodFactsService.resolveIndonesianCategory(
+      const { category: resolvedCat, isBeverage } = OpenFoodFactsService.resolveIndonesianCategory(
         item.name || '',
         [],
         item.category || ''
       );
       if (category === 'minuman') return isBeverage;
-      return !isBeverage;
+      if (category === 'makanan') return !isBeverage;
+      if (category === 'snack') return /snack|camilan|keripik|crisps|popcorn|kripik/i.test(resolvedCat);
+      if (category === 'susu-olahan') return /susu|mentega|cheese|keju|dairy|butter/i.test(resolvedCat);
+      if (category === 'mie-pasta') return /mie|pasta|noodle|spaghetti|ramen|bihun/i.test(resolvedCat);
+      if (category === 'biskuit-kue') return /biskuit|kue|biscuit|cake|roti|wafer|cookie/i.test(resolvedCat);
+      if (category === 'saus-bumbu') return /minyak|bumbu|saus|sauce|kecap|sambal|seasoning/i.test(resolvedCat);
+      if (category === 'cokelat-permen') return /cokelat|chocolate|permen|candy/i.test(resolvedCat);
+      if (category === 'sereal') return /sereal|cereal|oat|granola|beras|rice/i.test(resolvedCat);
+      return true;
     });
 
     const totalCount = filtered.length;

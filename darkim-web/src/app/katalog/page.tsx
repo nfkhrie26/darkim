@@ -9,6 +9,7 @@ import ProductCard from '@/components/catalog/ProductCard';
 import CatalogPagination from '@/components/catalog/CatalogPagination';
 import { Icons } from '@/components/ui/Icons';
 import { CatalogProductItem, CatalogSearchResponse } from '@/types';
+import { CATEGORY_LABELS_MAP } from '@/lib/catalogCategories';
 
 const PAGE_SIZE = 6;
 
@@ -24,6 +25,17 @@ export default function CatalogPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // Monitor scroll threshold to toggle sticky header into inline search row
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 80);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -108,18 +120,21 @@ export default function CatalogPage() {
 
   return (
     <div className="min-h-screen flex flex-col p-4 sm:p-6 lg:p-8 pb-24 md:pb-8 bg-[#E6F1EA]">
-      {/* Sticky Floating Header with Top-Right Floating Search & Category Filter Actions */}
+      {/* Sticky Floating Header: Replaces Logo + Nav with Inline Search Bar when scrolled */}
       <Header
-        rightContent={
-          <CatalogFloatingActions
-            searchQuery={inputQuery}
-            onSearchChange={setInputQuery}
-            selectedCategory={selectedCategory}
-            onCategoryChange={handleCategoryChange}
-            onSubmitSearch={handleSubmitSearch}
-            onClearSearch={handleClearSearch}
-            isLoading={isLoading}
-          />
+        stickyOverride={
+          isScrolled ? (
+            <CatalogFloatingActions
+              searchQuery={inputQuery}
+              onSearchChange={setInputQuery}
+              selectedCategory={selectedCategory}
+              onCategoryChange={handleCategoryChange}
+              onSubmitSearch={handleSubmitSearch}
+              onClearSearch={handleClearSearch}
+              isLoading={isLoading}
+              onBackToTop={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            />
+          ) : undefined
         }
       />
 
@@ -138,7 +153,7 @@ export default function CatalogPage() {
           />
 
           {/* Status Metadata Bar */}
-          {(!isLoading && !errorMsg) || appliedQuery ? (
+          {(!isLoading && !errorMsg) || appliedQuery || selectedCategory !== 'all' ? (
             <div className="flex items-center justify-between gap-2 flex-wrap px-1">
               {!isLoading && !errorMsg ? (
                 <span className="text-xs font-bold text-gray-700">
@@ -148,16 +163,31 @@ export default function CatalogPage() {
                 <span />
               )}
 
-              {appliedQuery && (
-                <button
-                  type="button"
-                  onClick={handleClearSearch}
-                  className="text-xs font-black text-black bg-white hover:bg-gray-100 brutal-border-sm rounded-lg px-2.5 py-1 inline-flex items-center gap-1 cursor-pointer"
-                >
-                  <span>Filter: &quot;{appliedQuery}&quot;</span>
-                  <Icons.Close className="w-3 h-3" />
-                </button>
-              )}
+              <div className="flex items-center gap-2 flex-wrap">
+                {selectedCategory !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => handleCategoryChange('all')}
+                    title="Hapus filter kategori"
+                    className="text-xs font-black text-black bg-[#00D084] hover:bg-[#00be78] brutal-border-sm rounded-lg px-2.5 py-1 inline-flex items-center gap-1 cursor-pointer brutal-btn"
+                  >
+                    <span>Kategori: {CATEGORY_LABELS_MAP[selectedCategory] || selectedCategory}</span>
+                    <Icons.Close className="w-3 h-3" />
+                  </button>
+                )}
+
+                {appliedQuery && (
+                  <button
+                    type="button"
+                    onClick={handleClearSearch}
+                    title="Hapus filter kata kunci"
+                    className="text-xs font-black text-black bg-white hover:bg-gray-100 brutal-border-sm rounded-lg px-2.5 py-1 inline-flex items-center gap-1 cursor-pointer brutal-btn"
+                  >
+                    <span>Filter: &quot;{appliedQuery}&quot;</span>
+                    <Icons.Close className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
             </div>
           ) : null}
 

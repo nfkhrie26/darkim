@@ -131,10 +131,10 @@ export default function ReportProductModal({
                 </span>
               </div>
               <h3 className="text-base sm:text-lg font-black text-black">
-                Bantu Lengkapi Data Produk
+                Perbaiki Informasi Nilai Gizi
               </h3>
               <p className="text-xs font-semibold text-gray-600 mt-0.5 leading-relaxed">
-                Unggah foto produk kemasan depan. Jika foto tabel informasi gizi tidak tersedia, Anda dapat menginput nilai gizinya pada langkah berikutnya.
+                Produk sudah terdaftar di katalog. Wajib melampirkan foto tabel informasi nilai gizi untuk verifikasi perbaikan data. Foto kemasan depan bersifat opsional.
               </p>
               {(barcode || productName) && (
                 <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-gray-700 mt-2">
@@ -157,6 +157,7 @@ export default function ReportProductModal({
               initialName={productName}
               initialBrand={brand}
               initialCategory={category}
+              isNewProduct={false}
               onSuccess={handleContributeSuccess}
               onClose={onClose}
             />

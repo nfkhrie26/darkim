@@ -243,16 +243,16 @@ export default function ScanResultView({
         onToggleTableMode={onToggleTableMode}
       />
 
-      {/* 5. Tombol Laporkan Ketidaksesuaian Data (Di Bawah Tabel Informasi Gizi) */}
+      {/* 5. Tombol Laporkan Ketidaksesuaian Data (Span Lebar Penuh) */}
       {onOpenReport && (
-        <div className="w-full flex items-center justify-center sm:justify-end pt-1">
+        <div className="w-full pt-1">
           <button
             type="button"
             onClick={onOpenReport}
             title="Produk Tidak Sesuai? Laporkan Pada Kami!"
-            className="w-full sm:w-auto bg-[#FF4D4D] hover:bg-[#e63e3e] text-white brutal-border-sm brutal-shadow-sm rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-wider inline-flex items-center justify-center gap-2 brutal-btn cursor-pointer"
+            className="w-full bg-[#FF4D4D] hover:bg-[#e63e3e] text-white brutal-border-sm brutal-shadow-sm rounded-xl px-4 py-3 text-xs sm:text-sm font-black uppercase tracking-wider inline-flex items-center justify-center gap-2 brutal-btn cursor-pointer"
           >
-            <Icons.Flag className="w-3.5 h-3.5 text-white shrink-0" />
+            <Icons.Flag className="w-4 h-4 text-white shrink-0" />
             <span>Produk Tidak Sesuai? Laporkan</span>
           </button>
         </div>

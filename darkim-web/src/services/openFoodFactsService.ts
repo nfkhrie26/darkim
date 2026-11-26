@@ -459,10 +459,20 @@ export class OpenFoodFactsService {
       // Strictly filter catalog to Indonesian & imported products available in Indonesia
       clauses.push('countries:"en:indonesia"');
 
-      if (category === 'minuman') {
-        clauses.push('categories:"en:beverages"');
-      } else if (category === 'makanan') {
-        clauses.push('-categories:"en:beverages"');
+      const categoryClauses: Record<string, string> = {
+        minuman: 'categories:"en:beverages"',
+        makanan: '-categories:"en:beverages"',
+        snack: 'categories:"en:snacks"',
+        'susu-olahan': 'categories:"en:dairies"',
+        'mie-pasta': '(categories:"en:noodles" OR categories:"en:pastas")',
+        'biskuit-kue': 'categories:"en:biscuits-and-cakes"',
+        'saus-bumbu': '(categories:"en:sauces" OR categories:"en:condiments")',
+        'cokelat-permen': '(categories:"en:chocolates" OR categories:"en:confectioneries")',
+        sereal: '(categories:"en:breakfast-cereals" OR categories:"en:cereals")',
+      };
+
+      if (category && category !== 'all' && categoryClauses[category]) {
+        clauses.push(categoryClauses[category]);
       }
 
       const params = new URLSearchParams({

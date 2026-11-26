@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Icons } from '@/components/ui/Icons';
+import { CATALOG_CATEGORY_OPTIONS } from '@/lib/catalogCategories';
 
 interface CatalogSearchBarProps {
   searchQuery: string;
@@ -12,12 +13,6 @@ interface CatalogSearchBarProps {
   onClearSearch?: () => void;
   isLoading?: boolean;
 }
-
-const CATEGORY_OPTIONS = [
-  { value: 'all', label: 'Semua Kategori', shortLabel: 'Semua Kategori' },
-  { value: 'makanan', label: 'Makanan', shortLabel: 'Makanan' },
-  { value: 'minuman', label: 'Minuman', shortLabel: 'Minuman' },
-] as const;
 
 export default function CatalogSearchBar({
   searchQuery,
@@ -59,7 +54,7 @@ export default function CatalogSearchBar({
   }, [dropdownOpen]);
 
   const currentCategory =
-    CATEGORY_OPTIONS.find((c) => c.value === selectedCategory) || CATEGORY_OPTIONS[0];
+    CATALOG_CATEGORY_OPTIONS.find((c) => c.value === selectedCategory) || CATALOG_CATEGORY_OPTIONS[0];
 
   return (
     <div className="w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -140,36 +135,39 @@ export default function CatalogSearchBar({
 
         {/* Floating Category Menu */}
         {dropdownOpen && (
-          <div className="absolute right-0 top-full mt-2 w-full sm:w-56 z-50 bg-white brutal-border-lg brutal-shadow-lg rounded-2xl p-2 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-150">
+          <div className="absolute right-0 top-full mt-2 w-full sm:w-60 z-50 bg-white brutal-border-lg brutal-shadow-lg rounded-2xl p-2 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-150">
             <div className="px-2.5 py-1 mb-1 border-b-2 border-black/10 flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">
                 Pilih Kategori
               </span>
               <span className="text-[10px] font-mono font-black bg-[#FFD027] brutal-border-sm px-1.5 py-0.5 rounded text-black">
-                {CATEGORY_OPTIONS.length} PILIHAN
+                {CATALOG_CATEGORY_OPTIONS.length} PILIHAN
               </span>
             </div>
 
-            {CATEGORY_OPTIONS.map((cat) => {
-              const isSelected = selectedCategory === cat.value;
-              return (
-                <button
-                  key={cat.value}
-                  type="button"
-                  onClick={() => {
-                    onCategoryChange(cat.value);
-                    setDropdownOpen(false);
-                  }}
-                  className={`w-full py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-between brutal-btn cursor-pointer transition-all ${isSelected
-                      ? 'bg-[#00D084] text-black brutal-border-sm brutal-shadow-sm'
-                      : 'bg-white hover:bg-gray-100 text-black'
+            <div className="flex flex-col gap-1 max-h-72 overflow-y-auto custom-scrollbar pr-0.5">
+              {CATALOG_CATEGORY_OPTIONS.map((cat) => {
+                const isSelected = selectedCategory === cat.value;
+                return (
+                  <button
+                    key={cat.value}
+                    type="button"
+                    onClick={() => {
+                      onCategoryChange(cat.value);
+                      setDropdownOpen(false);
+                    }}
+                    className={`w-full py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-between brutal-btn cursor-pointer transition-all ${
+                      isSelected
+                        ? 'bg-[#00D084] text-black brutal-border-sm brutal-shadow-sm'
+                        : 'bg-white hover:bg-gray-100 text-black'
                     }`}
-                >
-                  <span>{cat.label}</span>
-                  {isSelected && <Icons.Check className="w-4 h-4 text-black shrink-0" />}
-                </button>
-              );
-            })}
+                  >
+                    <span>{cat.label}</span>
+                    {isSelected && <Icons.Check className="w-4 h-4 text-black shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

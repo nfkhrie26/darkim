@@ -300,6 +300,7 @@ export default function PindaiPage() {
         productName={product?.name}
         brand={product?.brand}
         category={product?.category}
+        isNewProduct={Boolean(!product || fallbackBarcode !== product.barcode)}
         onClose={() => setContributeModalOpen(false)}
         onSubmitSuccess={showToast}
       />

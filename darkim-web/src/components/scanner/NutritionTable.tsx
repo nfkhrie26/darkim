@@ -6,7 +6,8 @@ import { Icons } from '@/components/ui/Icons';
 interface NutritionTableProps {
   evaluation: NutritionEvaluation;
   tableMode: 'status' | 'nutrition';
-  onToggleTableMode: () => void;
+  onToggleTableMode?: () => void;
+  onSelectTableMode?: (mode: 'status' | 'nutrition') => void;
 }
 
 /**
@@ -18,17 +19,49 @@ export default function NutritionTable({
   evaluation,
   tableMode,
   onToggleTableMode,
+  onSelectTableMode,
 }: NutritionTableProps) {
+  const handleSelectMode = (mode: 'status' | 'nutrition') => {
+    if (mode === tableMode) return;
+    if (onSelectTableMode) {
+      onSelectTableMode(mode);
+    } else if (onToggleTableMode) {
+      onToggleTableMode();
+    }
+  };
+
   return (
-    <div className="w-full flex flex-col gap-2">
-      <div className="flex items-center justify-end">
+    <div className="w-full flex flex-col gap-2.5">
+      {/* Mode Selector Buttons: Two buttons with active color matching the respective table header */}
+      <div className="flex items-center justify-end gap-2 flex-wrap" role="tablist" aria-label="Pilihan Tampilan Tabel">
+        {/* Tombol 1: Status Zat Gizi (Kuning #FFD027 saat aktif) */}
         <button
           type="button"
-          onClick={onToggleTableMode}
-          className="bg-white hover:bg-gray-50 brutal-border-sm brutal-shadow-sm px-3 py-1.5 rounded-xl text-[11px] font-black uppercase text-black flex items-center gap-1.5 brutal-btn cursor-pointer"
+          role="tab"
+          aria-selected={tableMode === 'status'}
+          onClick={() => handleSelectMode('status')}
+          className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-black uppercase tracking-wider brutal-btn cursor-pointer transition-colors ${
+            tableMode === 'status'
+              ? 'bg-[#FFD027] text-black brutal-border-sm brutal-shadow-sm'
+              : 'bg-white hover:bg-gray-100 text-black brutal-border-sm'
+          }`}
         >
-          <Icons.Table className="w-3.5 h-3.5 text-black" />
-          <span>Tampilan: {tableMode === 'status' ? 'Status Zat Gizi' : 'Informasi Nilai Gizi'}</span>
+          Status Zat Gizi
+        </button>
+
+        {/* Tombol 2: Informasi Nilai Gizi (Hijau #00D084 saat aktif) */}
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tableMode === 'nutrition'}
+          onClick={() => handleSelectMode('nutrition')}
+          className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-black uppercase tracking-wider brutal-btn cursor-pointer transition-colors ${
+            tableMode === 'nutrition'
+              ? 'bg-[#00D084] text-black brutal-border-sm brutal-shadow-sm'
+              : 'bg-white hover:bg-gray-100 text-black brutal-border-sm'
+          }`}
+        >
+          Informasi Nilai Gizi
         </button>
       </div>
 
