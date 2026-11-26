@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { OpenFoodFactsService } from '@/services/openFoodFactsService';
+import { toOptionalNumber } from '@/lib/nutritionConversion';
 
 export async function POST(req: NextRequest) {
   try {
@@ -83,22 +84,22 @@ export async function POST(req: NextRequest) {
         }, { status: 400 });
       }
 
-      // Write directly to Open Food Facts (no local product DB)
+      // Write directly to Open Food Facts (preserve zero 0 values accurately!)
       const offSyncResult = await OpenFoodFactsService.writeProduct({
         barcode: ticket.barcode,
         name: manualData.name.trim(),
         brand: manualData.brand?.trim() || undefined,
         category: manualData.category?.trim() || undefined,
         servingSize: manualData.servingSize?.trim() || undefined,
-        energy: manualData.energy ? Number(manualData.energy) : undefined,
-        carbohydrates: manualData.carbohydrates ? Number(manualData.carbohydrates) : undefined,
-        sugars: manualData.sugars ? Number(manualData.sugars) : undefined,
-        fiber: manualData.fiber ? Number(manualData.fiber) : undefined,
-        proteins: manualData.proteins ? Number(manualData.proteins) : undefined,
-        fat: manualData.fat ? Number(manualData.fat) : undefined,
-        saturatedFat: manualData.saturatedFat ? Number(manualData.saturatedFat) : undefined,
-        sodium: manualData.sodium ? Number(manualData.sodium) : undefined,
-        salt: manualData.salt ? Number(manualData.salt) : undefined,
+        energy: toOptionalNumber(manualData.energy),
+        carbohydrates: toOptionalNumber(manualData.carbohydrates),
+        sugars: toOptionalNumber(manualData.sugars),
+        fiber: toOptionalNumber(manualData.fiber),
+        proteins: toOptionalNumber(manualData.proteins),
+        fat: toOptionalNumber(manualData.fat),
+        saturatedFat: toOptionalNumber(manualData.saturatedFat),
+        sodium: toOptionalNumber(manualData.sodium),
+        salt: toOptionalNumber(manualData.salt),
       });
 
       // Update ticket to RESOLVED

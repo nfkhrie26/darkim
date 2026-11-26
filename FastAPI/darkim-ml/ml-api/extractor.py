@@ -213,12 +213,121 @@ def strict_ocr_barcode_progressive(
     return None
 
 # =====================================================================
-# 3. FUNGSI UTAMA EKSTRAKSI DARI BYTES GAMBAR (SUPPORT FAST & DEEP MODE)
+# 3. FUNGSI UTAMA EKSTRAKSI DARI BYTES GAMBAR (FAST vs DEEP ALGORITHM)
 # =====================================================================
+def generate_deep_tiles(img_bgr: np.ndarray) -> List[Tuple[str, List[int]]]:
+    """Bangun kandidat multi-skala (Center Zoom, Lower Half, Quadrants) khusus untuk DeepScan."""
+    H, W = img_bgr.shape[:2]
+    return [
+        ("DeepTile Center 65%", [int(W * 0.175), int(H * 0.175), int(W * 0.825), int(H * 0.825)]),
+        ("DeepTile Lower Half", [0, int(H * 0.42), W, H]),
+        ("DeepTile Upper Half", [0, 0, W, int(H * 0.58)]),
+        ("DeepTile Bottom-Right", [int(W * 0.4), int(H * 0.45), W, H]),
+        ("DeepTile Full Image", [0, 0, W, H]),
+    ]
+
+
+def run_deep_algorithm(img: np.ndarray, t0: float, deadline: float) -> Dict[str, Any]:
+    """
+    Algoritma khusus DeepScan (terpisah dari fast stream):
+    Menggabungkan Multi-Scale Sliding Tiles + Contrast/Otsu/Inverted Enhancement +
+    3.0x Bicubic Super-Resolution + EasyOCR Multi-Angle Digit Reconstruction.
+    """
+    H, W = img.shape[:2]
+    deep_candidates: List[Tuple[str, List[int]]] = []
+
+    # Kumpulkan kandidat YOLO & Sobel lalu perluas dengan Multi-Scale Tiles
+    res = YOLO_DETECTOR.predict(img, conf=0.15, imgsz=640, verbose=False)
+    for r in res:
+        for box in r.boxes:
+            x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+            deep_candidates.append(("DeepScan YOLO", [x1, y1, x2, y2]))
+
+    for (mx1, my1, mx2, my2) in localize_barcode_candidates_cv(img, fast_mode=False):
+        deep_candidates.append(("DeepScan Sobel", [mx1, my1, mx2, my2]))
+
+    deep_candidates.extend(generate_deep_tiles(img))
+
+    # Tahap 1 Deep: Adaptive Binary + Otsu + Inverted Contrast pada multi-scale tiles & 4 sudut
+    for stage_label, (x1, y1, x2, y2) in deep_candidates:
+        if time.perf_counter() > deadline:
+            break
+        pad = 36 if stage_label != "DeepTile Full Image" else 0
+        crop = img[max(0, y1 - pad) : min(H, y2 + pad), max(0, x1 - pad) : min(W, x2 + pad)]
+        if crop.size == 0:
+            continue
+
+        crop_sr = progressive_upscale(crop, iter_level=2 if min(crop.shape[:2]) < 320 else 1)
+        ch, cw = crop_sr.shape[:2]
+        for angle in get_smart_angles(cw, ch):
+            if time.perf_counter() > deadline:
+                break
+            rot = rotate_image_by_angle(crop_sr, angle)
+            gray = cv2.cvtColor(rot, cv2.COLOR_BGR2GRAY) if len(rot.shape) == 3 else rot
+            clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8)).apply(gray)
+            _, otsu = cv2.threshold(clahe, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            inv_otsu = cv2.bitwise_not(otsu)
+
+            for filt_name, cand_img in (
+                ("CLAHE", clahe),
+                ("Otsu", otsu),
+                ("InvertedOtsu", inv_otsu),
+                ("AdaptiveThresh", cv2.adaptiveThreshold(clahe, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 9)),
+            ):
+                if time.perf_counter() > deadline:
+                    break
+                decoded = decode_bars_multi_engine(cand_img)
+                if decoded:
+                    code, fmt = decoded
+                    return {
+                        "success": True,
+                        "barcode": code,
+                        "format": fmt,
+                        "method_used": f"{stage_label} + SuperRes + Rotasi {angle}° + {filt_name}",
+                        "confidence_score": 99.3,
+                        "bbox": [x1, y1, x2, y2] if stage_label != "DeepTile Full Image" else [],
+                        "processing_time_ms": round((time.perf_counter() - t0) * 1000, 1),
+                    }
+
+    # Tahap 2 Deep: EasyOCR Progressive Reconstruction pada kandidat teratas
+    for iter_lvl in (1, 2):
+        if time.perf_counter() > deadline:
+            break
+        for stage_label, (x1, y1, x2, y2) in deep_candidates[:4]:
+            if time.perf_counter() > deadline:
+                break
+            pad = 36
+            crop = img[max(0, y1 - pad) : min(H, y2 + pad), max(0, x1 - pad) : min(W, x2 + pad)]
+            if crop.size == 0:
+                continue
+            ocr_found = strict_ocr_barcode_progressive(crop, iter_level=iter_lvl, deadline=deadline)
+            if ocr_found:
+                code, fmt = ocr_found
+                return {
+                    "success": True,
+                    "barcode": code,
+                    "format": fmt,
+                    "method_used": f"{stage_label} + EasyOCR (Zoom Lvl {iter_lvl}) + GS1 Checksum",
+                    "confidence_score": round(99.0 - (iter_lvl * 1.5), 1),
+                    "bbox": [x1, y1, x2, y2] if stage_label != "DeepTile Full Image" else [],
+                    "processing_time_ms": round((time.perf_counter() - t0) * 1000, 1),
+                }
+
+    return {
+        "success": False,
+        "barcode": None,
+        "format": None,
+        "method_used": "DeepScan Gagal Terbaca",
+        "confidence_score": 0.0,
+        "bbox": [],
+        "processing_time_ms": round((time.perf_counter() - t0) * 1000, 1),
+    }
+
+
 def extract_barcode_from_bytes(image_bytes: bytes, fast_mode: bool = False) -> Dict[str, Any]:
     t0 = time.perf_counter()
-    # Batas waktu ketat: 1.2 detik untuk fast_mode, 4.5 detik untuk deep_mode
-    deadline = t0 + (1.2 if fast_mode else 4.5)
+    # Batas waktu ketat: 1.2 detik untuk fast_mode, 6.0 detik untuk deep algorithm
+    deadline = t0 + (1.2 if fast_mode else 6.0)
 
     nparr = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -245,6 +354,10 @@ def extract_barcode_from_bytes(image_bytes: bytes, fast_mode: bool = False) -> D
             "bbox": [],
             "processing_time_ms": round((time.perf_counter() - t0) * 1000, 1),
         }
+
+    # Alihkan mode DeepScan sepenuhnya ke algoritma multi-scale SuperRes + OCR tersendiri
+    if not fast_mode:
+        return run_deep_algorithm(img, t0, deadline)
 
     H, W = img.shape[:2]
     candidate_boxes: List[Tuple[str, List[int]]] = []

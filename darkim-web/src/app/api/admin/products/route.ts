@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { OpenFoodFactsService } from '@/services/openFoodFactsService';
 import { ProductRepository } from '@/services/productRepository';
+import { toOptionalNumber } from '@/lib/nutritionConversion';
 
 export async function GET(req: NextRequest) {
   try {
@@ -67,15 +68,15 @@ export async function POST(req: NextRequest) {
       brand: body.brand ? String(body.brand).trim() : undefined,
       category: body.category ? String(body.category).trim() : undefined,
       servingSize: body.servingSize ? String(body.servingSize).trim() : undefined,
-      energy: body.energy !== undefined && body.energy !== '' ? Number(body.energy) : undefined,
-      carbohydrates: body.carbohydrates !== undefined && body.carbohydrates !== '' ? Number(body.carbohydrates) : undefined,
-      sugars: body.sugars !== undefined && body.sugars !== '' ? Number(body.sugars) : undefined,
-      fiber: body.fiber !== undefined && body.fiber !== '' ? Number(body.fiber) : undefined,
-      proteins: body.proteins !== undefined && body.proteins !== '' ? Number(body.proteins) : undefined,
-      fat: body.fat !== undefined && body.fat !== '' ? Number(body.fat) : undefined,
-      saturatedFat: body.saturatedFat !== undefined && body.saturatedFat !== '' ? Number(body.saturatedFat) : undefined,
-      sodium: body.sodium !== undefined && body.sodium !== '' ? Number(body.sodium) : undefined,
-      salt: body.salt !== undefined && body.salt !== '' ? Number(body.salt) : undefined,
+      energy: toOptionalNumber(body.energy),
+      carbohydrates: toOptionalNumber(body.carbohydrates),
+      sugars: toOptionalNumber(body.sugars),
+      fiber: toOptionalNumber(body.fiber),
+      proteins: toOptionalNumber(body.proteins),
+      fat: toOptionalNumber(body.fat),
+      saturatedFat: toOptionalNumber(body.saturatedFat),
+      sodium: toOptionalNumber(body.sodium),
+      salt: toOptionalNumber(body.salt),
     });
 
     if (!offResult.success) {

@@ -1,10 +1,17 @@
-import { ProductModel } from '@/types';
+import { CatalogProductItem, ProductModel } from '@/types';
+import {
+  getPer100ConversionFactor,
+  parseServingQuantity,
+  scaleNutrientToPer100,
+} from '@/lib/nutritionConversion';
 
 export interface NormalizedOffProduct {
   barcode: string;
   name: string;
   brand: string;
   category: string;
+  servingSize?: string | null;
+  nutritionBasis?: string | null;
   energy?: number | null;
   carbohydrates?: number | null;
   sugars?: number | null;
@@ -48,6 +55,20 @@ export interface OffWriteResult {
 
 export class OpenFoodFactsService {
   private static BASE_URL = 'https://world.openfoodfacts.org';
+  private static SEARCH_URL = 'https://search.openfoodfacts.org/search';
+
+  private static CATALOG_FIELDS = [
+    'code',
+    'product_name',
+    'product_name_id',
+    'product_name_en',
+    'brands',
+    'categories',
+    'categories_tags',
+    'image_front_small_url',
+    'image_front_url',
+    'image_url',
+  ].join(',');
 
   // Request only essential fields from OFF to reduce payload by up to 90% and speed up response
   private static TARGET_FIELDS = [
@@ -58,6 +79,7 @@ export class OpenFoodFactsService {
     'brands',
     'categories',
     'categories_tags',
+    'countries_tags',
     'image_url',
     'image_front_url',
     'nutriments',
@@ -75,6 +97,8 @@ export class OpenFoodFactsService {
       name: off.name,
       brand: off.brand,
       category: off.category,
+      servingSize: off.servingSize,
+      nutritionBasis: off.nutritionBasis,
       energy: off.energy,
       carbohydrates: off.carbohydrates,
       sugars: off.sugars,
@@ -111,18 +135,44 @@ export class OpenFoodFactsService {
 
       const p = data.product;
       const n = p.nutriments || {};
+      const servingSizeStr = p.serving_size ? String(p.serving_size).trim() : null;
+      const servingQty = parseServingQuantity(servingSizeStr);
 
-      // Helper to parse numeric nutrition, differentiating 0 from missing (null)
-      const parseNutrient = (key100: string, keyServing?: string): number | null => {
-        if (n[key100] !== undefined && n[key100] !== null && n[key100] !== '') {
-          const val = Number(n[key100]);
-          return isNaN(val) ? null : val;
+      const hasValidNum = (key: string): boolean =>
+        n[key] !== undefined && n[key] !== null && n[key] !== '' && !isNaN(Number(n[key]));
+
+      // Opsi A: Prefer consistent per-serving basis whenever serving_size and *_serving data exist
+      const hasServingData =
+        Boolean(servingSizeStr) &&
+        [
+          'energy-kcal_serving',
+          'energy_serving',
+          'carbohydrates_serving',
+          'sugars_serving',
+          'fat_serving',
+          'saturated-fat_serving',
+          'proteins_serving',
+          'sodium_serving',
+          'salt_serving',
+        ].some(hasValidNum);
+
+      const nutritionBasis = hasServingData && servingSizeStr
+        ? `per ${servingSizeStr}`
+        : 'per 100g / 100ml';
+
+      // Helper to read a single consistent basis (serving-first when hasServingData, else strictly _100g)
+      const parseNutrient = (key100: string, keyServing: string): number | null => {
+        if (hasServingData) {
+          if (hasValidNum(keyServing)) {
+            return Number(Number(n[keyServing]).toFixed(5));
+          }
+          // Scale _100g consistently to serving basis if only _100g is present
+          if (hasValidNum(key100) && servingQty && servingQty > 0) {
+            return Number(((Number(n[key100]) * servingQty) / 100).toFixed(5));
+          }
+          return null;
         }
-        if (keyServing && n[keyServing] !== undefined && n[keyServing] !== null && n[keyServing] !== '') {
-          const val = Number(n[keyServing]);
-          return isNaN(val) ? null : val;
-        }
-        return null;
+        return hasValidNum(key100) ? Number(Number(n[key100]).toFixed(5)) : null;
       };
 
       // 1. Calorie / Energy
@@ -131,40 +181,41 @@ export class OpenFoodFactsService {
         // Fallback from kJ if kcal is missing (1 kcal = 4.184 kJ)
         const energyKj = parseNutrient('energy_100g', 'energy_serving');
         if (energyKj !== null) {
-          energy = Math.round(energyKj / 4.184);
+          energy = Number((energyKj / 4.184).toFixed(1));
         }
+      } else {
+        energy = Number(energy.toFixed(1));
       }
 
       // 2. Diabetes core parameters
-      const carbs = parseNutrient('carbohydrates_100g', 'carbohydrates_serving');
-      const sugars = parseNutrient('sugars_100g', 'sugars_serving');
-      const fiber = parseNutrient('fiber_100g', 'fiber_serving');
-      const proteins = parseNutrient('proteins_100g', 'proteins_serving');
-      const fat = parseNutrient('fat_100g', 'fat_serving');
-      const saturatedFat = parseNutrient('saturated-fat_100g', 'saturated-fat_serving');
+      const round2 = (v: number | null) => (v !== null ? Number(v.toFixed(2)) : null);
+      const carbs = round2(parseNutrient('carbohydrates_100g', 'carbohydrates_serving'));
+      const sugars = round2(parseNutrient('sugars_100g', 'sugars_serving'));
+      const fiber = round2(parseNutrient('fiber_100g', 'fiber_serving'));
+      const proteins = round2(parseNutrient('proteins_100g', 'proteins_serving'));
+      const fat = round2(parseNutrient('fat_100g', 'fat_serving'));
+      const saturatedFat = round2(parseNutrient('saturated-fat_100g', 'saturated-fat_serving'));
 
       // 3. Hypertension core parameters (Sodium in mg & Salt in g)
-      let rawSodium = parseNutrient('sodium_100g', 'sodium_serving'); // typically grams in OFF
-      let rawSalt = parseNutrient('salt_100g', 'salt_serving'); // grams in OFF
+      const rawSodium = parseNutrient('sodium_100g', 'sodium_serving'); // typically grams in OFF
+      const rawSalt = parseNutrient('salt_100g', 'salt_serving'); // grams in OFF
 
       let sodiumMg: number | null = null;
       let saltG: number | null = null;
 
       if (rawSodium !== null) {
-        sodiumMg = Math.round(rawSodium * 1000);
+        sodiumMg = Number((rawSodium * 1000).toFixed(1));
         saltG = rawSalt !== null ? Number(rawSalt.toFixed(2)) : Number(((sodiumMg * 2.5) / 1000).toFixed(2));
       } else if (rawSalt !== null) {
         saltG = Number(rawSalt.toFixed(2));
-        sodiumMg = Math.round((rawSalt / 2.5) * 1000);
+        sodiumMg = Number(((rawSalt / 2.5) * 1000).toFixed(1));
       }
 
       // 4. Data Quality / Completeness Check
-      // Critical fields for Darkim's dual health profile: Sugars (Diabetes) and Sodium/Salt (Hypertension)
       const hasDiabetesData = sugars !== null || carbs !== null;
       const hasHypertensionData = sodiumMg !== null || saltG !== null;
       const isNutritionComplete = Boolean(hasDiabetesData && hasHypertensionData);
 
-      // Score based on presence of 6 major nutrients: energy, carbs, sugars, fat, proteins, sodium
       const evaluatedFields = [energy, carbs, sugars, fat, proteins, sodiumMg];
       const filledCount = evaluatedFields.filter((v) => v !== null).length;
       const nutritionCompletenessScore = Math.round((filledCount / evaluatedFields.length) * 100);
@@ -174,6 +225,8 @@ export class OpenFoodFactsService {
         name: p.product_name_id || p.product_name || p.product_name_en || 'Produk Tanpa Nama',
         brand: p.brands || 'Tanpa Brand',
         category: p.categories_tags?.[0]?.replace(/^id:|^en:/, '') || p.categories || 'Makanan & Minuman',
+        servingSize: servingSizeStr,
+        nutritionBasis,
         energy,
         carbohydrates: carbs,
         sugars,
@@ -190,11 +243,145 @@ export class OpenFoodFactsService {
         rawData: {
           nutriments: n,
           serving_size: p.serving_size,
+          countries_tags: p.countries_tags,
           last_modified_t: p.last_modified_t,
         },
       };
     } catch (err) {
       console.warn(`[OpenFoodFacts] Failed fetching barcode ${barcode}:`, err);
+      return null;
+    }
+  }
+
+  /**
+   * Normalize raw OpenFoodFacts search hit/product into a clean CatalogProductItem
+   */
+  private static normalizeCatalogItem(raw: any): CatalogProductItem {
+    const barcode = String(raw?.code || '').trim();
+    const rawBrands = Array.isArray(raw?.brands)
+      ? raw.brands.map((b: string) => String(b).replace(/^[a-z]{2}:/i, '')).join(', ')
+      : String(raw?.brands || '').trim();
+
+    const tags: string[] = Array.isArray(raw?.categories_tags)
+      ? raw.categories_tags
+      : Array.isArray(raw?.categories)
+      ? raw.categories
+      : [];
+    const isBeverage = tags.some((t) => /beverage|drink|milk|tea|coffee|juice|water|soda/i.test(t));
+    const readableTag = tags[tags.length - 1]?.replace(/^[a-z]{2}:/i, '').replace(/-/g, ' ');
+    const fallbackCategory = isBeverage
+      ? 'Minuman'
+      : readableTag || (typeof raw?.categories === 'string' ? raw.categories.split(',')[0] : '') || 'Makanan & Minuman';
+
+    return {
+      id: barcode,
+      barcode,
+      name: raw?.product_name_id || raw?.product_name || raw?.product_name_en || 'Produk Tanpa Nama',
+      brand: rawBrands || 'Tanpa Brand',
+      category: fallbackCategory,
+      image: raw?.image_front_url || raw?.image_front_small_url || raw?.image_url || null,
+    };
+  }
+
+  /**
+   * Fetch paginated catalog products directly from OpenFoodFacts (GET)
+   * Uses Search-a-licious (search.openfoodfacts.org) for ~10ms responses with Indonesia priority + global fallback.
+   * Returns null when OpenFoodFacts is unreachable so callers can fall back cleanly to local PostgreSQL.
+   */
+  static async searchCatalog(options: {
+    query?: string;
+    category?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<{
+    products: CatalogProductItem[];
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    totalPages: number;
+  } | null> {
+    const cleanQuery = (options.query || '').trim();
+    const category = (options.category || 'all').toLowerCase();
+    const page = Math.max(1, Number(options.page) || 1);
+    const pageSize = Math.min(24, Math.max(1, Number(options.pageSize) || 6));
+
+    // 1. Direct barcode lookup when user inputs an 8-14 digit EAN/UPC code (strictly Indonesia market)
+    if (/^\d{8,14}$/.test(cleanQuery)) {
+      const exact = await this.getByBarcode(cleanQuery);
+      const countriesTags: string[] = Array.isArray(exact?.rawData?.countries_tags)
+        ? exact.rawData.countries_tags
+        : [];
+      const isIndonesianMarket =
+        cleanQuery.startsWith('899') ||
+        countriesTags.some((t) => t.toLowerCase().includes('indonesia'));
+
+      if (!exact || !isIndonesianMarket) {
+        return { products: [], page: 1, pageSize, totalCount: 0, totalPages: 1 };
+      }
+      return {
+        products: [
+          {
+            id: exact.barcode,
+            barcode: exact.barcode,
+            name: exact.name,
+            brand: exact.brand,
+            category: exact.category,
+            image: exact.image,
+          },
+        ],
+        page: 1,
+        pageSize,
+        totalCount: 1,
+        totalPages: 1,
+      };
+    }
+
+    try {
+      const clauses: string[] = [];
+      if (cleanQuery.length > 0) {
+        // Strip Lucene special colons/quotes in user free-text to prevent 400 QueryCheckError
+        const safeText = cleanQuery.replace(/[:"]/g, ' ').trim();
+        if (safeText) clauses.push(safeText);
+      }
+      // Strictly filter catalog to Indonesian & imported products available in Indonesia
+      clauses.push('countries:"en:indonesia"');
+
+      if (category === 'minuman') {
+        clauses.push('categories:"en:beverages"');
+      } else if (category === 'makanan') {
+        clauses.push('-categories:"en:beverages"');
+      }
+
+      const params = new URLSearchParams({
+        q: clauses.join(' '),
+        sort_by: '-unique_scans_n',
+        page: String(page),
+        page_size: String(pageSize),
+        fields: this.CATALOG_FIELDS,
+      });
+
+      const res = await fetch(`${this.SEARCH_URL}?${params.toString()}`, {
+        headers: {
+          'User-Agent': 'DARKIM-NutritionApp/1.0 (https://github.com/darkim-project)',
+        },
+        next: { revalidate: 300 },
+        signal: AbortSignal.timeout(7000),
+      });
+
+      if (!res.ok) return null;
+      const data = await res.json();
+
+      const rawHits: any[] = Array.isArray(data?.hits) ? data.hits : [];
+      const products = rawHits
+        .map((item) => this.normalizeCatalogItem(item))
+        .filter((p) => Boolean(p.barcode));
+
+      const totalCount = Number(data?.count || products.length);
+      const totalPages = Math.min(1000, Math.max(1, Math.ceil(totalCount / pageSize)));
+
+      return { products, page, pageSize, totalCount, totalPages };
+    } catch (err) {
+      console.warn(`[OpenFoodFacts] searchCatalog failed for '${cleanQuery}':`, err);
       return null;
     }
   }
@@ -294,52 +481,50 @@ export class OpenFoodFactsService {
       params.append('user_id', creds.userId);
       params.append('password', creds.password);
 
-      // Basic product information
+      // Basic product information (tag Indonesia automatically for new/updated products)
       if (data.name) params.append('product_name', data.name.trim());
       if (data.brand) params.append('brands', data.brand.trim());
       if (data.category) params.append('categories', data.category.trim());
+      params.append('countries', 'Indonesia');
       if (data.servingSize) params.append('serving_size', data.servingSize.trim());
 
-      // Nutritional parameters (per 100g standard)
-      if (data.energy !== undefined && data.energy !== null) {
-        params.append('nutriment_energy-kcal', String(data.energy));
-        params.append('nutriment_energy-kcal_unit', 'kcal');
-      }
-      if (data.carbohydrates !== undefined && data.carbohydrates !== null) {
-        params.append('nutriment_carbohydrates', String(data.carbohydrates));
-        params.append('nutriment_carbohydrates_unit', 'g');
-      }
-      if (data.sugars !== undefined && data.sugars !== null) {
-        params.append('nutriment_sugars', String(data.sugars));
-        params.append('nutriment_sugars_unit', 'g');
-      }
-      if (data.fiber !== undefined && data.fiber !== null) {
-        params.append('nutriment_fiber', String(data.fiber));
-        params.append('nutriment_fiber_unit', 'g');
-      }
-      if (data.proteins !== undefined && data.proteins !== null) {
-        params.append('nutriment_proteins', String(data.proteins));
-        params.append('nutriment_proteins_unit', 'g');
-      }
-      if (data.fat !== undefined && data.fat !== null) {
-        params.append('nutriment_fat', String(data.fat));
-        params.append('nutriment_fat_unit', 'g');
-      }
-      if (data.saturatedFat !== undefined && data.saturatedFat !== null) {
-        params.append('nutriment_saturated-fat', String(data.saturatedFat));
-        params.append('nutriment_saturated-fat_unit', 'g');
+      // Convert nutrient values dynamically from user-entered servingSize (e.g., per 250 ml) -> OFF canonical per 100g/100ml
+      const { factor } = getPer100ConversionFactor(data.servingSize);
+      params.append('nutrition_data_per', '100g');
+
+      const convEnergy = scaleNutrientToPer100(data.energy, factor, 2);
+      const convCarbs = scaleNutrientToPer100(data.carbohydrates, factor, 2);
+      const convSugars = scaleNutrientToPer100(data.sugars, factor, 2);
+      const convFiber = scaleNutrientToPer100(data.fiber, factor, 2);
+      const convProteins = scaleNutrientToPer100(data.proteins, factor, 2);
+      const convFat = scaleNutrientToPer100(data.fat, factor, 2);
+      const convSatFat = scaleNutrientToPer100(data.saturatedFat, factor, 2);
+      const convSodiumMg = scaleNutrientToPer100(data.sodium, factor, 2);
+      let convSalt = scaleNutrientToPer100(data.salt, factor, 4);
+      if (convSalt === undefined && convSodiumMg !== undefined) {
+        convSalt = Number(((convSodiumMg * 2.5) / 1000).toFixed(4));
       }
 
-      // Convert sodium from mg to g as required by OpenFoodFacts per 100g
-      if (data.sodium !== undefined && data.sodium !== null) {
-        const sodiumGrams = Number((data.sodium / 1000).toFixed(4));
-        params.append('nutriment_sodium', String(sodiumGrams));
-        params.append('nutriment_sodium_unit', 'g');
-      }
-      if (data.salt !== undefined && data.salt !== null) {
-        params.append('nutriment_salt', String(data.salt));
-        params.append('nutriment_salt_unit', 'g');
-      }
+      // Format exact zero as '0.0' so Perl CGI product_jqm2.pl treats it as truthy instead of dropping falsy '0'
+      const appendNutriment = (key: string, val: number | undefined, unit: string) => {
+        if (val === undefined || isNaN(val)) return;
+        params.append(`nutriment_${key}`, val === 0 ? '0.0' : String(val));
+        params.append(`nutriment_${key}_unit`, unit);
+      };
+
+      const sodiumGrams =
+        convSodiumMg !== undefined ? Number((convSodiumMg / 1000).toFixed(5)) : undefined;
+
+      // Nutritional parameters (per 100g/100ml standard)
+      appendNutriment('energy-kcal', convEnergy, 'kcal');
+      appendNutriment('carbohydrates', convCarbs, 'g');
+      appendNutriment('sugars', convSugars, 'g');
+      appendNutriment('fiber', convFiber, 'g');
+      appendNutriment('proteins', convProteins, 'g');
+      appendNutriment('fat', convFat, 'g');
+      appendNutriment('saturated-fat', convSatFat, 'g');
+      appendNutriment('sodium', sodiumGrams, 'g');
+      appendNutriment('salt', convSalt, 'g');
 
       params.append('comment', 'Updated via DARKIM Food & Nutrition Assistant');
 

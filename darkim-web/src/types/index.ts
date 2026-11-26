@@ -1,6 +1,6 @@
 export type HealthProfile = 'hipertensi' | 'diabetes';
 
-export type NutritionStatusColor = 'green' | 'yellow' | 'red';
+export type NutritionStatusColor = 'green' | 'yellow' | 'red' | 'white';
 
 export interface NutritionStatusItem {
   zat: string;
@@ -19,6 +19,7 @@ export interface NutritionEvaluation {
   badge: 'AMAN' | 'HATI-HATI' | 'TIDAK AMAN' | 'DATA TIDAK LENGKAP';
   badgeBg: string;
   isDataIncomplete?: boolean;
+  nutritionBasis?: string | null;
   safePoints: string[];
   warningPoints: string[];
   statusTable: NutritionStatusItem[];
@@ -31,6 +32,8 @@ export interface ProductModel {
   name: string;
   brand: string;
   category: string;
+  servingSize?: string | null;
+  nutritionBasis?: string | null;
   energy?: number | null;
   carbohydrates?: number | null;
   sugars?: number | null;
@@ -69,5 +72,25 @@ export interface ScanApiResponse {
   message?: string;
   stage?: string;
   time_ms?: number;
+}
+
+export interface CatalogProductItem {
+  id: string;
+  barcode: string;
+  name: string;
+  brand: string;
+  category: string;
+  image?: string | null;
+}
+
+export interface CatalogSearchResponse {
+  success: boolean;
+  source: 'openfoodfacts' | 'local-fallback';
+  products: CatalogProductItem[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  message?: string;
 }
 

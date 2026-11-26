@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { toOptionalNumber } from '@/lib/nutritionConversion';
 import fs from 'fs';
 import path from 'path';
 
@@ -26,14 +27,14 @@ export async function POST(req: NextRequest) {
             brand: m.brand || '',
             category: m.category || 'Makanan & Minuman',
             servingSize: m.servingSize || '',
-            energy: m.energy !== undefined && m.energy !== null ? Number(m.energy) : null,
-            carbohydrates: m.carbohydrates !== undefined && m.carbohydrates !== null ? Number(m.carbohydrates) : null,
-            sugars: m.sugars !== undefined && m.sugars !== null ? Number(m.sugars) : null,
-            fat: m.fat !== undefined && m.fat !== null ? Number(m.fat) : null,
-            saturatedFat: m.saturatedFat !== undefined && m.saturatedFat !== null ? Number(m.saturatedFat) : null,
-            proteins: m.proteins !== undefined && m.proteins !== null ? Number(m.proteins) : null,
-            sodium: m.sodium !== undefined && m.sodium !== null ? Number(m.sodium) : null,
-            fiber: m.fiber !== undefined && m.fiber !== null ? Number(m.fiber) : null,
+            energy: toOptionalNumber(m.energy) ?? null,
+            carbohydrates: toOptionalNumber(m.carbohydrates) ?? null,
+            sugars: toOptionalNumber(m.sugars) ?? null,
+            fat: toOptionalNumber(m.fat) ?? null,
+            saturatedFat: toOptionalNumber(m.saturatedFat) ?? null,
+            proteins: toOptionalNumber(m.proteins) ?? null,
+            sodium: toOptionalNumber(m.sodium) ?? null,
+            fiber: toOptionalNumber(m.fiber) ?? null,
             userNote: description || '',
           });
         } catch {}
@@ -77,14 +78,14 @@ export async function POST(req: NextRequest) {
           brand: m.brand || '',
           category: m.category || 'Makanan & Minuman',
           servingSize: m.servingSize || '',
-          energy: m.energy !== undefined && m.energy !== null ? Number(m.energy) : null,
-          carbohydrates: m.carbohydrates !== undefined && m.carbohydrates !== null ? Number(m.carbohydrates) : null,
-          sugars: m.sugars !== undefined && m.sugars !== null ? Number(m.sugars) : null,
-          fat: m.fat !== undefined && m.fat !== null ? Number(m.fat) : null,
-          saturatedFat: m.saturatedFat !== undefined && m.saturatedFat !== null ? Number(m.saturatedFat) : null,
-          proteins: m.proteins !== undefined && m.proteins !== null ? Number(m.proteins) : null,
-          sodium: m.sodium !== undefined && m.sodium !== null ? Number(m.sodium) : null,
-          fiber: m.fiber !== undefined && m.fiber !== null ? Number(m.fiber) : null,
+          energy: toOptionalNumber(m.energy) ?? null,
+          carbohydrates: toOptionalNumber(m.carbohydrates) ?? null,
+          sugars: toOptionalNumber(m.sugars) ?? null,
+          fat: toOptionalNumber(m.fat) ?? null,
+          saturatedFat: toOptionalNumber(m.saturatedFat) ?? null,
+          proteins: toOptionalNumber(m.proteins) ?? null,
+          sodium: toOptionalNumber(m.sodium) ?? null,
+          fiber: toOptionalNumber(m.fiber) ?? null,
           userNote: body.description || '',
         });
       }
