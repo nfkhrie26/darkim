@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { TicketModel } from '@/types';
 import { NutritionValues } from '@/components/admin/NutritionInputGrid';
+import { isValidOffCategory } from '@/constants/offCategories';
+import { toOptionalNumber } from '@/lib/nutritionConversion';
 
 export interface ParsedUserDescription {
   isManualInput: boolean;
@@ -54,7 +56,7 @@ export function useTicketDetail(ticketId: string) {
   // Manual fields
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('');
-  const [category, setCategory] = useState('Makanan & Minuman');
+  const [category, setCategory] = useState('');
   const [servingSize, setServingSize] = useState('100 ml');
 
   const [nutrition, setNutrition] = useState<NutritionValues>({
@@ -87,7 +89,7 @@ export function useTicketDetail(ticketId: string) {
           setIsUserPrefilled(true);
           setName(parsed.productName || '');
           setBrand(parsed.brand || '');
-          setCategory(parsed.category || 'Makanan & Minuman');
+          setCategory(isValidOffCategory(parsed.category) ? (parsed.category as string) : '');
           setServingSize(parsed.servingSize || '100 ml');
           setNutrition({
             energy: parsed.energy !== undefined && parsed.energy !== null ? String(parsed.energy) : '',
@@ -164,14 +166,14 @@ export function useTicketDetail(ticketId: string) {
             brand: brand.trim() || undefined,
             category: category.trim() || undefined,
             servingSize: servingSize.trim() || undefined,
-            energy: nutrition.energy ? Number(nutrition.energy) : undefined,
-            carbohydrates: nutrition.carbohydrates ? Number(nutrition.carbohydrates) : undefined,
-            sugars: nutrition.sugars ? Number(nutrition.sugars) : undefined,
-            fiber: nutrition.fiber ? Number(nutrition.fiber) : undefined,
-            proteins: nutrition.proteins ? Number(nutrition.proteins) : undefined,
-            fat: nutrition.fat ? Number(nutrition.fat) : undefined,
-            saturatedFat: nutrition.saturatedFat ? Number(nutrition.saturatedFat) : undefined,
-            sodium: nutrition.sodium ? Number(nutrition.sodium) : undefined,
+            energy: toOptionalNumber(nutrition.energy),
+            carbohydrates: toOptionalNumber(nutrition.carbohydrates),
+            sugars: toOptionalNumber(nutrition.sugars),
+            fiber: toOptionalNumber(nutrition.fiber),
+            proteins: toOptionalNumber(nutrition.proteins),
+            fat: toOptionalNumber(nutrition.fat),
+            saturatedFat: toOptionalNumber(nutrition.saturatedFat),
+            sodium: toOptionalNumber(nutrition.sodium),
           },
         }),
       });

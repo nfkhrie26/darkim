@@ -2,6 +2,8 @@
 
 import { HealthProfile, NutritionEvaluation, ProductModel } from '@/types';
 import ProfileSelector from './ProfileSelector';
+import NutritionTable from './NutritionTable';
+import StatusHeaderBar from './StatusHeaderBar';
 import { Icons } from '@/components/ui/Icons';
 
 interface ScanResultViewProps {
@@ -17,6 +19,7 @@ interface ScanResultViewProps {
   onReset?: () => void;
   onRestorePrevious?: () => void;
   onOpenReport?: () => void;
+  onOpenContribute?: () => void;
   onOpenScanner?: () => void;
 }
 
@@ -33,12 +36,13 @@ export default function ScanResultView({
   onReset,
   onRestorePrevious,
   onOpenReport,
+  onOpenContribute,
   onOpenScanner,
 }: ScanResultViewProps) {
   // 1. Tampilan Loading Spinner saat sedang proses Scanning
   if (isScanning) {
     return (
-      <section className="flex-1 w-full max-w-5xl mx-auto flex flex-col gap-4">
+      <section className="flex-1 w-full flex flex-col gap-4">
         {/* Profile Selector */}
         <ProfileSelector selectedProfile={selectedProfile} onSelectProfile={onSelectProfile} />
 
@@ -67,7 +71,7 @@ export default function ScanResultView({
   // 2. Tampilan Khusus Saat Gagal Mendeteksi Barcode
   if (scanError) {
     return (
-      <section className="flex-1 w-full max-w-5xl mx-auto flex flex-col gap-4">
+      <section className="flex-1 w-full flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <ProfileSelector selectedProfile={selectedProfile} onSelectProfile={onSelectProfile} />
           {onOpenScanner && (
@@ -134,7 +138,7 @@ export default function ScanResultView({
   // 3. State awal sebelum pemindaian
   if (!product || !evaluation) {
     return (
-      <section className="flex-1 w-full max-w-5xl mx-auto flex flex-col gap-4">
+      <section className="flex-1 w-full flex flex-col gap-4">
         <ProfileSelector selectedProfile={selectedProfile} onSelectProfile={onSelectProfile} />
 
         <div className="bg-white brutal-border brutal-shadow rounded-2xl p-8 text-center flex flex-col items-center justify-center gap-3">
@@ -151,7 +155,7 @@ export default function ScanResultView({
   }
 
   return (
-    <section className="flex-1 w-full max-w-5xl mx-auto flex flex-col gap-4">
+    <section className="flex-1 w-full flex flex-col gap-4">
       {/* 1. Product Header: Title Box + Scan Again Button */}
       <div className="flex items-center justify-between gap-3 w-full flex-wrap">
         <div className="flex items-center gap-3 flex-1 min-w-[240px]">
@@ -198,16 +202,12 @@ export default function ScanResultView({
 
       {/* 3. Warning Card Section */}
       <div className="w-full flex flex-col items-start">
-        {/* Header Badge */}
-        <div
-          className="brutal-border-sm brutal-shadow-sm rounded-lg px-4 py-1 text-xs sm:text-sm font-black uppercase tracking-wider mb-2"
-          style={{
-            backgroundColor: evaluation.badgeBg,
-            color: evaluation.badgeBg === '#FF4D4D' ? '#FFFFFF' : '#000000',
-          }}
-        >
-          {evaluation.badge}
-        </div>
+        {/* Header Badge (Left) + Mirrored Red Report Button (Right) */}
+        <StatusHeaderBar
+          badge={evaluation.badge}
+          badgeBg={evaluation.badgeBg}
+          onOpenReport={onOpenReport}
+        />
 
         {/* Main Warning & Health Advice Card */}
         <div className="w-full bg-white brutal-border brutal-shadow rounded-2xl p-4 sm:p-5">
@@ -219,10 +219,10 @@ export default function ScanResultView({
                   Data gizi produk ini belum lengkap pada database. Bantu komunitas dengan melaporkan atau mengunggah foto tabel gizi!
                 </p>
               </div>
-              {onOpenReport && (
+              {(onOpenContribute || onOpenReport) && (
                 <button
                   type="button"
-                  onClick={onOpenReport}
+                  onClick={onOpenContribute || onOpenReport}
                   className="bg-[#00D084] hover:bg-[#00be78] text-black brutal-border-sm brutal-shadow-sm px-3 py-1.5 rounded-lg text-xs font-black uppercase brutal-btn shrink-0 cursor-pointer"
                 >
                   + Lengkapi Data
@@ -258,79 +258,11 @@ export default function ScanResultView({
       </div>
 
       {/* 4. Nutrition Table (Switchable Mode) */}
-      <div className="w-full flex flex-col gap-2">
-        <div className="flex items-center justify-end">
-          <button
-            type="button"
-            onClick={onToggleTableMode}
-            className="bg-white hover:bg-gray-50 brutal-border-sm brutal-shadow-sm px-3 py-1.5 rounded-xl text-[11px] font-black uppercase text-black flex items-center gap-1.5 brutal-btn cursor-pointer"
-          >
-            <Icons.Table className="w-3.5 h-3.5 text-black" />
-            <span>Tampilan: {tableMode === 'status' ? 'Status Zat Gizi' : 'Informasi Nilai Gizi'}</span>
-          </button>
-        </div>
-
-        {tableMode === 'status' ? (
-          /* View 1: Status Table with Yellow Header */
-          <div className="w-full bg-white brutal-border brutal-shadow rounded-xl overflow-hidden">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-[#FFD027] border-b-2 border-black text-black font-black text-xs sm:text-sm uppercase tracking-wider">
-                  <th className="py-2.5 px-3 w-1/3">ZAT GIZI</th>
-                  <th className="py-2.5 px-3 w-1/3 text-center">STATUS</th>
-                  <th className="py-2.5 px-3 w-1/3 text-right">JUMLAH</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y-2 divide-black">
-                {evaluation.statusTable.map((item, idx) => {
-                  let badgeClass = 'bg-[#00D084] text-black';
-                  if (item.statusColor === 'red') {
-                    badgeClass = 'bg-[#FF4D4D] text-white';
-                  } else if (item.statusColor === 'yellow') {
-                    badgeClass = 'bg-[#FFD027] text-black';
-                  }
-                  return (
-                    <tr key={idx} className="border-b-2 border-black last:border-b-0">
-                      <td className="py-2.5 px-3 text-xs sm:text-sm font-bold text-black">{item.zat}</td>
-                      <td className="py-2.5 px-3 text-center">
-                        <span
-                          className={`inline-block px-3 py-1 brutal-border-sm rounded-md text-[11px] sm:text-xs font-black uppercase tracking-wider brutal-shadow-sm ${badgeClass}`}
-                        >
-                          {item.status}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3 text-right text-xs sm:text-sm font-bold text-black">{item.jumlah}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          /* View 2: Informasi Nilai Gizi Table */
-          <div className="w-full bg-white brutal-border brutal-shadow rounded-xl p-4">
-            <h3 className="text-center font-black text-sm uppercase tracking-wide text-black pb-2 mb-2 border-b-2 border-black">
-              Informasi Nilai Gizi
-            </h3>
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b-2 border-black/20 text-xs font-bold text-gray-700">
-                  <th className="py-1.5 px-2">Zat gizi</th>
-                  <th className="py-1.5 px-2 text-right">Jumlah</th>
-                </tr>
-              </thead>
-              <tbody>
-                {evaluation.nutritionTable.map((item, idx) => (
-                  <tr key={idx} className="border-b border-black/10 last:border-b-0">
-                    <td className="py-1.5 px-2 text-xs font-semibold text-gray-800">{item.zat}</td>
-                    <td className="py-1.5 px-2 text-right text-xs font-bold text-black">{item.jumlah}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <NutritionTable
+        evaluation={evaluation}
+        tableMode={tableMode}
+        onToggleTableMode={onToggleTableMode}
+      />
     </section>
   );
 }

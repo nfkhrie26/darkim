@@ -10,7 +10,6 @@ interface CameraScannerProps {
   onScanSuccess?: (data: ScanApiResponse) => void;
   onBarcodeNotFound?: (barcode: string) => void;
   onTriggerScanMock?: () => void;
-  onOpenReport: () => void;
   isScanning?: boolean;
   selectedProfile?: HealthProfile;
   onSelectProfile?: (profile: HealthProfile) => void;
@@ -48,7 +47,6 @@ export default function CameraScanner({
   onScanSuccess,
   onBarcodeNotFound,
   onTriggerScanMock,
-  onOpenReport,
   isScanning = false,
   selectedProfile = 'diabetes',
   onSelectProfile,
@@ -435,7 +433,7 @@ export default function CameraScanner({
   };
 
   return (
-    <section className="flex-1 w-full max-w-5xl mx-auto flex flex-col gap-3.5">
+    <section className="flex-1 w-full flex flex-col gap-3.5">
       {/* Scanner Box / Viewfinder Container */}
       <div className="w-full bg-white brutal-border brutal-shadow rounded-2xl p-3.5 flex flex-col gap-3">
         {/* Viewfinder Top Bar / Mode Switcher & Profile Selector */}
@@ -491,9 +489,7 @@ export default function CameraScanner({
           </div>
 
           {/* Health Profile Selector (Hipertensi / Diabetes) */}
-          {onSelectProfile && (
-            <ProfileSelector selectedProfile={selectedProfile} onSelectProfile={onSelectProfile} />
-          )}
+
 
           {/* Hidden File Input for Photo tab */}
           <input
@@ -574,18 +570,6 @@ export default function CameraScanner({
 
                   {/* Bottom Controls Over Viewfinder */}
                   <div className="absolute bottom-3 inset-x-3 z-20 flex items-center justify-between gap-2">
-                    {/* Deep Scan Fallback Button */}
-                    <button
-                      type="button"
-                      title="Pindai Mendalam / Jepret Manual (Deep OCR Scan)"
-                      disabled={isScanning}
-                      onClick={handleManualDeepScan}
-                      className="bg-white/95 hover:bg-white text-black brutal-border-sm brutal-shadow-sm px-3.5 py-1.5 rounded-xl font-black text-[11px] uppercase flex items-center gap-1.5 backdrop-blur-sm brutal-btn cursor-pointer"
-                    >
-                      <Icons.Sparkles className="w-4 h-4 text-black" />
-                      <span>Deep Scan</span>
-                    </button>
-
                     {/* Restart / Re-focus Camera Button */}
                     <button
                       type="button"
@@ -665,20 +649,6 @@ export default function CameraScanner({
           )}
         </div>
       </div>
-
-      {/* Report Button (Below Scanner Card) */}
-      <button
-        type="button"
-        onClick={onOpenReport}
-        className="w-full bg-white brutal-border brutal-shadow rounded-xl py-2.5 px-4 flex items-center justify-center gap-2 brutal-btn cursor-pointer"
-      >
-        <svg className="w-4 h-4 text-black shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
-        </svg>
-        <span className="font-black text-xs tracking-wider uppercase text-black">
-          PRODUK TIDAK SESUAI? LAPORKAN PADA KAMI!
-        </span>
-      </button>
     </section>
   );
 }

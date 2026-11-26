@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { NutritionValues } from '@/components/admin/NutritionInputGrid';
+import { toOptionalNumber } from '@/lib/nutritionConversion';
 
 export interface ProductIdentity {
   barcode: string;
@@ -66,14 +67,14 @@ export function useProductForm(initial?: Partial<ProductIdentity>) {
           brand: identity.brand.trim() || undefined,
           category: identity.category.trim() || undefined,
           servingSize: identity.servingSize.trim() || undefined,
-          energy: nutrition.energy ? parseFloat(nutrition.energy) : undefined,
-          carbohydrates: nutrition.carbohydrates ? parseFloat(nutrition.carbohydrates) : undefined,
-          sugars: nutrition.sugars ? parseFloat(nutrition.sugars) : undefined,
-          fat: nutrition.fat ? parseFloat(nutrition.fat) : undefined,
-          saturatedFat: nutrition.saturatedFat ? parseFloat(nutrition.saturatedFat) : undefined,
-          proteins: nutrition.proteins ? parseFloat(nutrition.proteins) : undefined,
-          sodium: nutrition.sodium ? parseFloat(nutrition.sodium) : undefined,
-          fiber: nutrition.fiber ? parseFloat(nutrition.fiber) : undefined,
+          energy: toOptionalNumber(nutrition.energy),
+          carbohydrates: toOptionalNumber(nutrition.carbohydrates),
+          sugars: toOptionalNumber(nutrition.sugars),
+          fat: toOptionalNumber(nutrition.fat),
+          saturatedFat: toOptionalNumber(nutrition.saturatedFat),
+          proteins: toOptionalNumber(nutrition.proteins),
+          sodium: toOptionalNumber(nutrition.sodium),
+          fiber: toOptionalNumber(nutrition.fiber),
         }),
       });
 

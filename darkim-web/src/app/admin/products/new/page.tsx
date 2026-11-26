@@ -5,12 +5,17 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Icons } from '@/components/ui/Icons';
 import AdminHeader from '@/components/admin/AdminHeader';
+import CategorySelect from '@/components/ui/CategorySelect';
+import ServingSizeInput from '@/components/ui/ServingSizeInput';
 import NutritionInputGrid from '@/components/admin/NutritionInputGrid';
 import ServingSizeCalculator from '@/components/admin/ServingSizeCalculator';
+import { isValidOffCategory } from '@/constants/offCategories';
+import { getPer100ConversionFactor } from '@/lib/nutritionConversion';
 import { useProductForm } from '@/hooks/useProductForm';
 
 function NewProductForm() {
   const searchParams = useSearchParams();
+  const rawCat = searchParams.get('category') || '';
   const {
     identity,
     nutrition,
@@ -24,9 +29,14 @@ function NewProductForm() {
     barcode: searchParams.get('barcode') || '',
     name: searchParams.get('name') || '',
     brand: searchParams.get('brand') || '',
-    category: searchParams.get('category') || 'Makanan & Minuman',
+    category: isValidOffCategory(rawCat) ? rawCat : '',
     servingSize: searchParams.get('servingSize') || '100 ml',
   });
+
+  const { servingAmount, factor, isScaled } = getPer100ConversionFactor(identity.servingSize);
+  const dynamicPerLabel = identity.servingSize.trim()
+    ? `per ${identity.servingSize.trim()}`
+    : 'per 100g / 100ml';
 
   return (
     <div className="min-h-screen flex flex-col p-4 sm:p-6 lg:p-8 bg-[#E6F1EA]">
@@ -136,24 +146,26 @@ function NewProductForm() {
                 </div>
 
                 <div>
-                  <label className="font-bold text-black text-xs block mb-1.5">Kategori Produk</label>
-                  <input
-                    type="text"
+                  <label className="font-bold text-black text-xs block mb-1.5">
+                    Kategori Produk <span className="text-red-600">*</span>
+                  </label>
+                  <CategorySelect
                     value={identity.category}
-                    onChange={(e) => updateIdentity('category', e.target.value)}
-                    placeholder="Contoh: Susu UHT / Minuman Kemasan"
-                    className="w-full bg-white brutal-border-sm rounded-xl p-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black placeholder:text-gray-400"
+                    onChange={(val) => updateIdentity('category', val)}
+                    required
+                    disabled={isSubmitting}
                   />
                 </div>
 
                 <div>
-                  <label className="font-bold text-black text-xs block mb-1.5">Takaran Saji (Serving Size)</label>
-                  <input
-                    type="text"
+                  <label className="font-bold text-black text-xs block mb-1.5">
+                    Takaran Saji <span className="text-red-600">*</span>
+                  </label>
+                  <ServingSizeInput
                     value={identity.servingSize}
-                    onChange={(e) => updateIdentity('servingSize', e.target.value)}
-                    placeholder="Contoh: 100 ml atau 200 ml (2 sajian)"
-                    className="w-full bg-white brutal-border-sm rounded-xl p-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black placeholder:text-gray-400"
+                    onChange={(val) => updateIdentity('servingSize', val)}
+                    required
+                    disabled={isSubmitting}
                   />
                 </div>
               </div>
@@ -170,8 +182,13 @@ function NewProductForm() {
                     Langkah 2
                   </span>
                   <h2 className="text-sm font-black uppercase text-black tracking-wide">
-                    Kandungan Nutrisi (per 100g / 100ml)
+                    Kandungan Nutrisi ({dynamicPerLabel})
                   </h2>
+                  {isScaled && servingAmount && (
+                    <span className="bg-[#FFD027] brutal-border-sm px-2.5 py-0.5 rounded text-[10px] font-black text-black">
+                      Auto-konversi ke basis 100g/ml (&times;{factor.toFixed(2)})
+                    </span>
+                  )}
                 </div>
                 <span className="text-[11px] font-semibold text-gray-500">Kosongkan jika tidak tercantum di kemasan</span>
               </div>

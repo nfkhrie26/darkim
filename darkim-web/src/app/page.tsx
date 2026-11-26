@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import Header from '@/components/Header';
-import Sidebar from '@/components/Sidebar';
 import Toast from '@/components/Toast';
 import CameraScanner from '@/components/scanner/CameraScanner';
 import ScanResultView from '@/components/scanner/ScanResultView';
 import ReportTextModal from '@/components/modals/ReportTextModal';
 import ContributePhotoModal from '@/components/modals/ContributePhotoModal';
+import { detectBarcodeInBrowser } from '@/lib/browserBarcodeDetector';
 import { HealthProfile, NutritionEvaluation, ProductModel, ScanApiResponse } from '@/types';
 
 export default function HomeScannerPage() {
@@ -119,12 +119,29 @@ export default function HomeScannerPage() {
       formData.append('profile', selectedProfile);
       formData.append('mode', mode);
 
+      // Run native browser BarcodeDetector concurrently in Deep Scan mode as an independent hybrid fallback
+      const nativeBarcodePromise =
+        mode === 'deep' ? detectBarcodeInBrowser(file) : Promise.resolve(null);
+
       const res = await fetch('/api/scan', {
         method: 'POST',
         body: formData,
       });
 
-      const data: ScanApiResponse = await res.json();
+      let data: ScanApiResponse = await res.json();
+
+      // If Python ML Deep pipeline did not detect a barcode, fall back to browser BarcodeDetector result
+      if (!data.success && !data.notFound) {
+        const nativeBarcode = await nativeBarcodePromise;
+        if (nativeBarcode) {
+          const fallbackRes = await fetch('/api/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ barcode: nativeBarcode, profile: selectedProfile }),
+          });
+          data = await fallbackRes.json();
+        }
+      }
 
       if (data.success && data.product && data.evaluation) {
         setProduct(data.product);
@@ -205,26 +222,19 @@ export default function HomeScannerPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col p-4 sm:p-6 lg:p-8">
-      {/* Top Header & Branding */}
+    <div className="min-h-screen flex flex-col p-4 sm:p-6 lg:p-8 pb-24 md:pb-8">
+      {/* Sticky Floating Header & Responsive 2-Tab Navbar (Desktop Top / Mobile Bottom) */}
       <Header />
 
-      {/* Main Content Area */}
-      <main className="w-full max-w-7xl mx-auto flex-1 flex flex-col lg:flex-row gap-5 lg:gap-6 items-start">
-        {/* Left Vertical Floating Sidebar */}
-        <Sidebar onToggleTableMode={handleToggleTableMode} onShowToast={showToast} />
-
-        {/* Center Column: Camera Scanner (Lebar penuh & imersif saat mode kamera aktif) */}
+      {/* Main Content Area (Clean Full Width without Left Sidebar) */}
+      <main className="w-full max-w-7xl mx-auto flex-1 flex flex-col gap-5">
+        {/* Center Column: Camera Scanner */}
         {!isViewingResult && (
           <CameraScanner
             onScanImage={handleScanImage}
             onScanSuccess={handleAutoScanSuccess}
             onBarcodeNotFound={handleBarcodeNotFound}
             onTriggerScanMock={handleTriggerScanMock}
-            onOpenReport={() => {
-              setFallbackBarcode('');
-              setContributeModalOpen(true);
-            }}
             isScanning={isScanning}
             selectedProfile={selectedProfile}
             onSelectProfile={handleSelectProfile}
@@ -245,9 +255,13 @@ export default function HomeScannerPage() {
             hasPreviousData={Boolean(previousProduct && previousEvaluation)}
             onReset={handleResetScan}
             onRestorePrevious={handleRestorePrevious}
-            onOpenReport={() => {
+            onOpenContribute={() => {
               setFallbackBarcode(product?.barcode || '');
               setContributeModalOpen(true);
+            }}
+            onOpenReport={() => {
+              setFallbackBarcode(product?.barcode || '');
+              setReportModalOpen(true);
             }}
             onOpenScanner={handleOpenScanner}
           />
@@ -258,6 +272,7 @@ export default function HomeScannerPage() {
       <ReportTextModal
         isOpen={reportModalOpen}
         barcode={fallbackBarcode}
+        productName={product?.name}
         onClose={() => setReportModalOpen(false)}
         onSubmitSuccess={showToast}
       />

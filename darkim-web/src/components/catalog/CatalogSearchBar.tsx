@@ -7,7 +7,9 @@ interface CatalogSearchBarProps {
   onSearchChange: (q: string) => void;
   selectedCategory: string;
   onCategoryChange: (cat: string) => void;
-  onSubmitSearch?: () => void;
+  onSubmitSearch: () => void;
+  onClearSearch?: () => void;
+  isLoading?: boolean;
 }
 
 export default function CatalogSearchBar({
@@ -16,6 +18,8 @@ export default function CatalogSearchBar({
   selectedCategory,
   onCategoryChange,
   onSubmitSearch,
+  onClearSearch,
+  isLoading = false,
 }: CatalogSearchBarProps) {
   return (
     <div className="w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -27,19 +31,35 @@ export default function CatalogSearchBar({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') onSubmitSearch?.();
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                onSubmitSearch();
+              }
             }}
-            placeholder="Cari produk berdasarkan nama atau barcode..."
-            className="w-full bg-white brutal-border brutal-shadow rounded-xl py-2.5 px-4 text-xs sm:text-sm font-semibold text-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-black transition-all"
+            placeholder="Cari produk OpenFoodFacts (nama atau barcode)..."
+            className="w-full bg-white brutal-border brutal-shadow rounded-xl py-2.5 pl-4 pr-9 text-xs sm:text-sm font-semibold text-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-black transition-all"
           />
+          {searchQuery && onClearSearch && (
+            <button
+              type="button"
+              onClick={onClearSearch}
+              title="Hapus pencarian"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-black cursor-pointer p-1"
+            >
+              <Icons.Close className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Yellow Search Action Button (#FFD027) */}
         <button
           type="button"
+          disabled={isLoading}
           onClick={onSubmitSearch}
           title="Cari Produk"
-          className="bg-[#FFD027] brutal-border brutal-shadow rounded-xl px-4 py-2.5 flex items-center justify-center brutal-btn cursor-pointer shrink-0"
+          className={`bg-[#FFD027] brutal-border brutal-shadow rounded-xl px-4 py-2.5 flex items-center justify-center brutal-btn cursor-pointer shrink-0 ${
+            isLoading ? 'opacity-70 animate-pulse' : ''
+          }`}
         >
           <Icons.Search className="w-5 h-5 text-black" />
         </button>
@@ -50,6 +70,7 @@ export default function CatalogSearchBar({
         <div className="bg-white brutal-border brutal-shadow rounded-xl px-3 py-1 flex items-center gap-2">
           <select
             value={selectedCategory}
+            disabled={isLoading}
             onChange={(e) => onCategoryChange(e.target.value)}
             className="bg-transparent font-black text-xs sm:text-sm uppercase tracking-wider text-black focus:outline-none py-1.5 cursor-pointer"
           >
@@ -57,8 +78,13 @@ export default function CatalogSearchBar({
             <option value="makanan">MAKANAN</option>
             <option value="minuman">MINUMAN</option>
           </select>
-          {/* Funnel SVG Icon (Y) */}
-          <svg className="w-4 h-4 text-black shrink-0 pointer-events-none" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+          <svg
+            className="w-4 h-4 text-black shrink-0 pointer-events-none"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            viewBox="0 0 24 24"
+          >
             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
           </svg>
         </div>
@@ -66,4 +92,3 @@ export default function CatalogSearchBar({
     </div>
   );
 }
-

@@ -6,6 +6,7 @@ import { Icons } from '@/components/ui/Icons';
 interface ReportTextModalProps {
   isOpen: boolean;
   barcode: string;
+  productName?: string;
   onClose: () => void;
   onSubmitSuccess: (msg: string) => void;
 }
@@ -13,6 +14,7 @@ interface ReportTextModalProps {
 export default function ReportTextModal({
   isOpen,
   barcode,
+  productName,
   onClose,
   onSubmitSuccess,
 }: ReportTextModalProps) {
@@ -27,12 +29,16 @@ export default function ReportTextModal({
 
     setLoading(true);
     try {
+      const formattedDescription = productName
+        ? `[Produk: ${productName}] ${description.trim()}`
+        : description.trim();
+
       const res = await fetch('/api/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           barcode: barcode || 'MANUAL-REPORT',
-          description: description.trim(),
+          description: formattedDescription,
         }),
       });
 
@@ -65,10 +71,19 @@ export default function ReportTextModal({
         <h3 className="text-base sm:text-lg font-black text-black mb-1">
           Laporkan Ketidaksesuaian Produk
         </h3>
-        {barcode && (
-          <p className="text-xs font-mono font-bold text-gray-600 mb-3">
-            Barcode Terlampir: <span className="text-black bg-yellow-200 px-1.5 py-0.5 rounded">{barcode}</span>
-          </p>
+        {(productName || barcode) && (
+          <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-gray-700 mb-3">
+            {productName && (
+              <span className="bg-[#E6F1EA] brutal-border-sm px-2 py-0.5 rounded text-black font-black">
+                {productName}
+              </span>
+            )}
+            {barcode && (
+              <span className="font-mono text-black bg-[#FFD027] brutal-border-sm px-2 py-0.5 rounded">
+                {barcode}
+              </span>
+            )}
+          </div>
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">

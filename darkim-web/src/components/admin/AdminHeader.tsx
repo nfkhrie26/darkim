@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import DarkimLogo from '@/components/DarkimLogo';
 import { Icons } from '@/components/ui/Icons';
 
 interface AdminHeaderProps {
@@ -22,20 +23,10 @@ export default function AdminHeader({ currentTab }: AdminHeaderProps) {
   };
 
   return (
-    <header className="w-full max-w-7xl mx-auto mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <header className="sticky top-3 sm:top-4 z-40 w-full max-w-7xl mx-auto mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       {/* Branding & Admin Pill */}
-      <div className="flex items-center gap-3">
-        <Link
-          href="/"
-          className="bg-white brutal-border brutal-shadow rounded-xl px-4 py-2 inline-flex items-center gap-1 hover:-translate-y-0.5 transition-transform cursor-pointer"
-          title="Ke Beranda DARKIM"
-        >
-          <span className="text-2xl sm:text-3xl font-black tracking-tight text-black">DARK</span>
-          <span className="text-2xl sm:text-3xl font-black tracking-tight text-[#00D084] relative">
-            IM
-            <span className="absolute -bottom-0.5 left-0 right-0 h-1 bg-[#00D084] rounded-full"></span>
-          </span>
-        </Link>
+      <div className="flex items-center gap-3 flex-wrap">
+        <DarkimLogo title="Ke Beranda DARKIM" />
 
         <div className="bg-[#FFD027] brutal-border-sm brutal-shadow-sm px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider text-black flex items-center gap-1.5 select-none">
           <span className="w-2 h-2 rounded-full bg-black animate-pulse"></span>

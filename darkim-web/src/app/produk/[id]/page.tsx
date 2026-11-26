@@ -3,7 +3,10 @@
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import Toast from '@/components/Toast';
+import DarkimLogo from '@/components/DarkimLogo';
 import ReportTextModal from '@/components/modals/ReportTextModal';
+import NutritionTable from '@/components/scanner/NutritionTable';
+import StatusHeaderBar from '@/components/scanner/StatusHeaderBar';
 import { HealthProfile, NutritionEvaluation, ProductModel } from '@/types';
 import { evaluateNutrition } from '@/services/nutritionEvaluator';
 
@@ -23,6 +26,7 @@ export default function ProductDetailPage({ params }: PageProps) {
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [heroImgError, setHeroImgError] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -89,33 +93,26 @@ export default function ProductDetailPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen flex flex-col p-4 sm:p-6 lg:p-8">
-      {/* Top Navigation Bar: Back Button & Header Branding (No Sidebar) */}
-      <header className="w-full max-w-7xl mx-auto mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      {/* Top Navigation Bar: Back Button & Always Floating DARKIM Branding */}
+      <header className="sticky top-3 sm:top-4 z-40 w-full max-w-7xl mx-auto mb-6 flex items-center justify-between gap-3 pointer-events-none">
         {/* Back Button (Top-Left) */}
         <Link
           href="/katalog"
-          className="inline-flex items-center gap-2 bg-white brutal-border brutal-shadow rounded-xl px-4 py-2.5 font-black text-xs uppercase tracking-wider text-black brutal-btn cursor-pointer"
+          className="pointer-events-auto inline-flex items-center gap-2 bg-white brutal-border brutal-shadow rounded-xl px-3.5 sm:px-4 py-2.5 font-black text-xs uppercase tracking-wider text-black brutal-btn cursor-pointer"
           title="Kembali ke Katalog Produk"
         >
           {/* Back Arrow SVG */}
           <svg className="w-4 h-4 text-black shrink-0" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
           </svg>
-          <span>KEMBALI KE KATALOG</span>
+          <span className="hidden sm:inline">KEMBALI KE KATALOG</span>
+          <span className="sm:hidden">KATALOG</span>
         </Link>
 
-        {/* Branding Logo */}
-        <Link
-          href="/"
-          className="bg-white brutal-border brutal-shadow rounded-xl px-4 py-2 inline-flex items-center gap-1 hover:-translate-y-0.5 transition-transform cursor-pointer"
-          title="DARKIM Beranda"
-        >
-          <span className="text-2xl sm:text-3xl font-black tracking-tight text-black">DARK</span>
-          <span className="text-2xl sm:text-3xl font-black tracking-tight text-[#00D084] relative">
-            IM
-            <span className="absolute -bottom-1 left-0 right-0 h-1.5 bg-[#00D084] rounded-full"></span>
-          </span>
-        </Link>
+        {/* Always Floating DARKIM Branding Logo */}
+        <div className="pointer-events-auto shrink-0">
+          <DarkimLogo />
+        </div>
       </header>
 
       {/* Shopee-like 2-Column Product Detail Layout */}
@@ -131,20 +128,37 @@ export default function ProductDetailPage({ params }: PageProps) {
           <section className="w-full lg:w-[460px] shrink-0 flex flex-col gap-4">
             {/* Main Hero Image Card */}
             <div className="w-full bg-white brutal-border brutal-shadow rounded-2xl p-4 flex flex-col">
-              <div className="w-full aspect-[4/3] bg-gradient-to-br from-[#1d2731] to-[#0f151c] brutal-border-sm rounded-xl overflow-hidden flex flex-col items-center justify-center p-6 text-center relative select-none">
-                {/* Brand Initial Badge */}
-                <div className="w-14 h-14 rounded-full border-2 border-amber-300 flex items-center justify-center mb-3 shadow-md bg-black/40">
-                  <span className="text-lg font-black text-amber-300">{initials}</span>
-                </div>
-                <span className="text-base sm:text-lg font-black text-white leading-tight uppercase tracking-tight line-clamp-1">
-                  {product.name}
-                </span>
-                <span className="text-xs font-bold text-sky-300 tracking-wider mt-1 uppercase">
-                  {product.category}
-                </span>
+              <div
+                className={`w-full aspect-[4/3] ${
+                  product.image && !heroImgError
+                    ? 'bg-white'
+                    : 'bg-gradient-to-br from-[#1d2731] to-[#0f151c] p-6'
+                } brutal-border-sm rounded-xl overflow-hidden flex flex-col items-center justify-center text-center relative select-none`}
+              >
+                {product.image && !heroImgError ? (
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    onError={() => setHeroImgError(true)}
+                    className="w-full h-full object-contain p-4 pb-12"
+                  />
+                ) : (
+                  <>
+                    {/* Brand Initial Badge */}
+                    <div className="w-14 h-14 rounded-full border-2 border-amber-300 flex items-center justify-center mb-3 shadow-md bg-black/40">
+                      <span className="text-lg font-black text-amber-300">{initials}</span>
+                    </div>
+                    <span className="text-base sm:text-lg font-black text-white leading-tight uppercase tracking-tight line-clamp-1">
+                      {product.name}
+                    </span>
+                    <span className="text-xs font-bold text-sky-300 tracking-wider mt-1 uppercase">
+                      {product.category}
+                    </span>
+                  </>
+                )}
 
                 {/* Decorative Barcode */}
-                <div className="absolute bottom-3 inset-x-8 bg-white/90 rounded px-3 py-1 flex items-center justify-center gap-1 shadow">
+                <div className="absolute bottom-3 inset-x-8 bg-white/95 brutal-border-sm rounded px-3 py-1 flex items-center justify-center gap-1 shadow">
                   <div className="w-1 h-4 bg-black"></div>
                   <div className="w-2 h-4 bg-black"></div>
                   <div className="w-0.5 h-4 bg-black"></div>
@@ -169,20 +183,6 @@ export default function ProductDetailPage({ params }: PageProps) {
                 </span>
               </div>
             </div>
-
-            {/* Report Button */}
-            <button
-              type="button"
-              onClick={() => setReportModalOpen(true)}
-              className="w-full bg-white brutal-border brutal-shadow rounded-xl py-3 px-4 flex items-center justify-center gap-2 brutal-btn cursor-pointer"
-            >
-              <svg className="w-4 h-4 text-black shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
-              </svg>
-              <span className="font-black text-xs uppercase tracking-wider text-black">
-                PRODUK TIDAK SESUAI? LAPORKAN PADA KAMI!
-              </span>
-            </button>
           </section>
 
           {/* Right Column: Nutrition Table, Health Analysis & Disease Filters */}
@@ -226,15 +226,11 @@ export default function ProductDetailPage({ params }: PageProps) {
 
             {/* Warning & Health Advice Card */}
             <div className="w-full flex flex-col items-start">
-              <div
-                className="brutal-border-sm brutal-shadow-sm rounded-lg px-4 py-1 text-xs sm:text-sm font-black uppercase tracking-wider mb-2"
-                style={{
-                  backgroundColor: evaluation.badgeBg,
-                  color: evaluation.badgeBg === '#FF4D4D' ? '#FFFFFF' : '#000000',
-                }}
-              >
-                {evaluation.badge}
-              </div>
+              <StatusHeaderBar
+                badge={evaluation.badge}
+                badgeBg={evaluation.badgeBg}
+                onOpenReport={() => setReportModalOpen(true)}
+              />
 
               <div className="w-full bg-white brutal-border brutal-shadow rounded-2xl p-4 sm:p-5">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -264,71 +260,11 @@ export default function ProductDetailPage({ params }: PageProps) {
             </div>
 
             {/* Nutrition Table (Switchable Mode) */}
-            <div className="w-full flex flex-col gap-1.5">
-              <div className="flex items-center justify-end">
-                <button
-                  type="button"
-                  onClick={() => setTableMode(tableMode === 'status' ? 'nutrition' : 'status')}
-                  className="text-[11px] font-black uppercase text-gray-700 hover:text-black underline cursor-pointer"
-                >
-                  Ganti Tampilan Tabel ({tableMode === 'status' ? 'Status Zat Gizi' : 'Informasi Nilai Gizi'})
-                </button>
-              </div>
-
-              {tableMode === 'status' ? (
-                <div className="w-full bg-white brutal-border brutal-shadow rounded-xl overflow-hidden">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-[#FFD027] border-b-2 border-black text-black font-black text-xs sm:text-sm uppercase tracking-wider">
-                        <th className="py-2.5 px-3 w-1/3">ZAT GIZI</th>
-                        <th className="py-2.5 px-3 w-1/3 text-center">STATUS</th>
-                        <th className="py-2.5 px-3 w-1/3 text-right">JUMLAH</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y-2 divide-black">
-                      {evaluation.statusTable.map((item, i) => {
-                        let badgeClass = 'bg-[#00D084] text-black';
-                        if (item.statusColor === 'red') badgeClass = 'bg-[#FF4D4D] text-white';
-                        else if (item.statusColor === 'yellow') badgeClass = 'bg-[#FFD027] text-black';
-                        return (
-                          <tr key={i} className="border-b-2 border-black last:border-b-0">
-                            <td className="py-2.5 px-3 text-xs sm:text-sm font-bold text-black">{item.zat}</td>
-                            <td className="py-2.5 px-3 text-center">
-                              <span className={`inline-block px-3 py-1 brutal-border-sm rounded-md text-[11px] sm:text-xs font-black uppercase tracking-wider brutal-shadow-sm ${badgeClass}`}>
-                                {item.status}
-                              </span>
-                            </td>
-                            <td className="py-2.5 px-3 text-right text-xs sm:text-sm font-bold text-black">{item.jumlah}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="w-full bg-white brutal-border brutal-shadow rounded-xl p-4">
-                  <h3 className="text-center font-black text-sm uppercase tracking-wide text-black pb-2 mb-2 border-b-2 border-black">
-                    Informasi Nilai Gizi
-                  </h3>
-                  <table className="w-full text-left">
-                    <thead>
-                      <tr className="border-b-2 border-black/20 text-xs font-bold text-gray-700">
-                        <th className="py-1.5 px-2">Zat gizi</th>
-                        <th className="py-1.5 px-2 text-right">Jumlah</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {evaluation.nutritionTable.map((item, i) => (
-                        <tr key={i} className="border-b border-black/10 last:border-b-0">
-                          <td className="py-1.5 px-2 text-xs font-semibold text-gray-800">{item.zat}</td>
-                          <td className="py-1.5 px-2 text-right text-xs font-bold text-black">{item.jumlah}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+            <NutritionTable
+              evaluation={evaluation}
+              tableMode={tableMode}
+              onToggleTableMode={() => setTableMode(tableMode === 'status' ? 'nutrition' : 'status')}
+            />
           </section>
         </main>
       )}
@@ -337,6 +273,7 @@ export default function ProductDetailPage({ params }: PageProps) {
       <ReportTextModal
         isOpen={reportModalOpen}
         barcode={product?.barcode || targetId}
+        productName={product?.name}
         onClose={() => setReportModalOpen(false)}
         onSubmitSuccess={showToast}
       />

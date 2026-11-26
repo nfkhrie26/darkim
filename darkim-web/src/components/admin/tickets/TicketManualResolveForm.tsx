@@ -2,7 +2,10 @@
 
 import Link from 'next/link';
 import { Icons } from '@/components/ui/Icons';
+import CategorySelect from '@/components/ui/CategorySelect';
+import ServingSizeInput from '@/components/ui/ServingSizeInput';
 import NutritionInputGrid, { NutritionValues } from '@/components/admin/NutritionInputGrid';
+import { getPer100ConversionFactor } from '@/lib/nutritionConversion';
 
 interface TicketManualResolveFormProps {
   name: string;
@@ -35,6 +38,9 @@ export default function TicketManualResolveForm({
   isResolving,
   onSubmit,
 }: TicketManualResolveFormProps) {
+  const { servingAmount, factor, isScaled } = getPer100ConversionFactor(servingSize);
+  const dynamicPerLabel = servingSize.trim() ? `per ${servingSize.trim()}` : 'per 100g / 100ml';
+
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4 text-xs">
       {/* Banner Input Mandiri Pengguna */}
@@ -83,23 +89,23 @@ export default function TicketManualResolveForm({
         </div>
 
         <div>
-          <label className="font-bold text-black block mb-1">Kategori</label>
-          <input
-            type="text"
+          <label className="font-bold text-black block mb-1">Kategori *</label>
+          <CategorySelect
             value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="w-full bg-white brutal-border-sm rounded-xl p-2.5 font-semibold focus:outline-none focus:ring-2 focus:ring-black placeholder:text-gray-400"
+            onChange={setCategory}
+            required
+            disabled={isResolving}
+            className="w-full bg-white brutal-border-sm rounded-xl p-2.5 font-semibold focus:outline-none focus:ring-2 focus:ring-black cursor-pointer"
           />
         </div>
 
         <div>
-          <label className="font-bold text-black block mb-1">Takaran Saji (Serving Size)</label>
-          <input
-            type="text"
+          <label className="font-bold text-black block mb-1">Takaran Saji *</label>
+          <ServingSizeInput
             value={servingSize}
-            onChange={(e) => setServingSize(e.target.value)}
-            placeholder="Contoh: 100 ml atau 250 ml (1 botol)"
-            className="w-full bg-white brutal-border-sm rounded-xl p-2.5 font-semibold focus:outline-none focus:ring-2 focus:ring-black placeholder:text-gray-400"
+            onChange={setServingSize}
+            required
+            disabled={isResolving}
           />
         </div>
       </div>
@@ -114,9 +120,16 @@ export default function TicketManualResolveForm({
 
       {/* Reusable Nutrition Grid */}
       <div className="flex flex-col gap-2">
-        <label className="font-black uppercase tracking-wider text-black text-xs">
-          Rincian Nilai Gizi (per 100g / 100ml)
-        </label>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <label className="font-black uppercase tracking-wider text-black text-xs">
+            Rincian Nilai Gizi ({dynamicPerLabel})
+          </label>
+          {isScaled && servingAmount && (
+            <span className="bg-[#FFD027] brutal-border-sm px-2.5 py-0.5 rounded text-[10px] font-black text-black">
+              Payload otomatis dikonversi ke basis 100g/ml (&times;{factor.toFixed(2)})
+            </span>
+          )}
+        </div>
         <NutritionInputGrid values={nutrition} onChange={updateNutrition} disabled={isResolving} />
       </div>
 

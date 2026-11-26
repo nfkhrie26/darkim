@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import DarkimLogo from '@/components/DarkimLogo';
 import { Icons } from '@/components/ui/Icons';
 
 export default function AdminLoginPage() {
@@ -38,19 +39,11 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-[#E6F1EA]">
-      {/* Branding Logo */}
-      <Link
-        href="/"
-        className="bg-white brutal-border brutal-shadow rounded-2xl px-5 py-2.5 inline-flex items-center gap-1 mb-6 hover:-translate-y-0.5 transition-transform cursor-pointer"
-        title="DARKIM Beranda"
-      >
-        <span className="text-3xl font-black tracking-tight text-black">DARK</span>
-        <span className="text-3xl font-black tracking-tight text-[#00D084] relative">
-          IM
-          <span className="absolute -bottom-1 left-0 right-0 h-1.5 bg-[#00D084] rounded-full"></span>
-        </span>
-      </Link>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 pt-24 bg-[#E6F1EA]">
+      {/* Always Floating Branding Logo */}
+      <div className="fixed top-4 left-4 sm:top-6 sm:left-8 z-40">
+        <DarkimLogo />
+      </div>
 
       {/* Main Login Card */}
       <div className="w-full max-w-md bg-white brutal-border brutal-shadow rounded-2xl p-6 sm:p-8">
@@ -116,15 +109,6 @@ export default function AdminLoginPage() {
           </button>
 
           <div className="text-center mt-3 pt-3 border-t-2 border-black/10">
-            <span className="text-[11px] text-gray-600 font-medium block mb-1">
-              Kredensial Default:
-            </span>
-            <code className="bg-[#FFD027] brutal-border-sm brutal-shadow-sm px-2.5 py-1 rounded-lg text-black font-mono font-bold text-xs inline-block">
-              admin / admin123
-            </code>
-          </div>
-
-          <div className="text-center mt-2">
             <Link
               href="/"
               className="text-xs font-black text-black hover:underline inline-flex items-center gap-1 cursor-pointer"
